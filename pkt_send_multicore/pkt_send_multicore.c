@@ -116,7 +116,7 @@ fill_ipv4_header(struct rte_ipv4_hdr *ipv4_hdr) {
 	ipv4_hdr->packet_id = rte_cpu_to_be_16(5462); // set random
 	ipv4_hdr->fragment_offset = rte_cpu_to_be_16(0);
 	ipv4_hdr->time_to_live = 64;
-	ipv4_hdr->next_proto_id = 6; // tcp
+	ipv4_hdr->next_proto_id = 17; // tcp
 	ipv4_hdr->hdr_checksum = rte_cpu_to_be_16(0x0);
 
     uint32_t src_ip = inet_addr("192.168.200.2");// cx2
