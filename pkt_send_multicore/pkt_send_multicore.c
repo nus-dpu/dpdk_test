@@ -93,7 +93,7 @@ void zipf_generate(double *zipf_cumuP){
     }
 }
 
-int zipf_pick(double *zipf_cumuP){
+int zipf_pick(const double *zipf_cumuP){
     unsigned int seed = 123;
     int index = 0;
     double data = (double)rand_r(&seed)/RAND_MAX;  //生成一个0~1的数
@@ -128,7 +128,7 @@ fill_ipv4_header(struct rte_ipv4_hdr *ipv4_hdr) {
 }
 
 static void
-fill_udp_header(struct rte_udp_hdr *udp_hdr, struct rte_ipv4_hdr *ipv4_hdr, double *zipf_cumuP) {
+fill_udp_header(struct rte_udp_hdr *udp_hdr, struct rte_ipv4_hdr *ipv4_hdr, const double *zipf_cumuP) {
 	udp_hdr->src_port = rte_cpu_to_be_16(0x162E);
     int dst_port = zipf_pick(zipf_cumuP);
 	udp_hdr->dst_port = rte_cpu_to_be_16(dst_port);
@@ -158,7 +158,7 @@ static struct rte_mbuf *make_testpkt(uint32_t queue_id, double *zipf_cumuP)
     
     struct rte_mbuf *mp = rte_pktmbuf_alloc(pktmbuf_pool[queue_id]);
 
-    uint16_t pkt_len = 64;
+    uint16_t pkt_len = PKT_LEN;
     char *buf = rte_pktmbuf_append(mp, pkt_len);
     if (unlikely(buf == NULL)) {
         APP_LOG("Error: failed to allocate packet buffer.\n");
