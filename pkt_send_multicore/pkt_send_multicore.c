@@ -29,20 +29,21 @@
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024
 #define NUM_MBUFS 4095
-#define MBUF_SIZE            (2048+sizeof(struct rte_mbuf)+RTE_PKTMBUF_HEADROOM)
+#define MBUF_SIZE   (2048+sizeof(struct rte_mbuf)+RTE_PKTMBUF_HEADROOM)
 #define MBUF_CACHE_SIZE 32
 #define BURST_SIZE 32
 #define PKT_LEN 1500
-#define PAY_LOAD_LEN PKT_LEN-sizeof(struct rte_tcp_hdr)\
-                        -sizeof(struct rte_ipv4_hdr)\
-                        -sizeof(struct rte_tcp_hdr)
+#define PAY_LOAD_LEN (PKT_LEN-28) //udp
 
 #define GET_RTE_HDR(t, h, m, o) \
     struct t *h = rte_pktmbuf_mtod_offset(m, struct t *, o)
 #define APP_LOG(...) RTE_LOG(INFO, USER1, __VA_ARGS__)
 #define PRN_COLOR(str) ("\033[0;33m" str "\033[0m")	// Yellow accent
 
-#define FLOW_NUM 60000
+#define FLOW_NUM 1
+
+#define ZIPF_A 0.75
+#define ZIPF_C 1.0
 
 struct lcore_configuration {
     uint32_t vid; // virtual core id
@@ -53,8 +54,9 @@ struct lcore_configuration {
     uint32_t rx_queue_list[RX_QUEUE_PER_LCORE]; // list of RX queues
 } __rte_cache_aligned;
 
-struct message {
-	char data[PAY_LOAD_LEN];
+struct payload
+{
+    char data[PAY_LOAD_LEN];/* data */
 };
 
 struct rte_mempool *pktmbuf_pool[MAX_LCORES];
@@ -64,19 +66,17 @@ static uint64_t min_txintv = 15/*us*/;	// min cycles between 2 returned packets
 static volatile bool force_quit = false;
 static volatile uint16_t nb_pending = 0;
 
-const double ZIPF_A = 0.75;
-const double ZIPF_C = 1.0;
-
 struct lcore_configuration lcore_conf[MAX_LCORES];
 
-static void
-fill_ethernet_header(struct rte_ether_hdr *eth_hdr) {
-	struct rte_ether_addr s_addr = {{0xB8,0x83,0x03,0x82,0xA2,0x10}}; //cx2
-	struct rte_ether_addr d_addr = {{0x0C,0x42,0xA1,0xD8,0x10,0x88}}; //bf4
-	eth_hdr->src_addr =s_addr;
-	eth_hdr->dst_addr =d_addr;
-	eth_hdr->ether_type = rte_cpu_to_be_16(0x0800);
-}
+uint64_t tx_pkt_num[MAX_LCORES];
+uint64_t rx_pkt_num[MAX_LCORES];
+uint64_t tx_pps[MAX_LCORES];
+uint64_t rx_pps[MAX_LCORES];
+double tx_bps[MAX_LCORES];
+double rx_bps[MAX_LCORES];
+
+// struct rte_ether_addr dst_mac;
+// struct rte_ether_addr src_mac;
 
 void zipf_generate(double *zipf_cumuP){
     double sum = 0.0;
@@ -86,15 +86,16 @@ void zipf_generate(double *zipf_cumuP){
         sum += ZIPF_C/pow((double)(i+2), ZIPF_A);
     }
     for (i = 0; i < FLOW_NUM; i++){ 
+        double zipf_temp = ZIPF_C/pow((double)(i+2), ZIPF_A);
         if (i == 0)
-            zipf_cumuP[i] = ZIPF_C/pow((double)(i+2), ZIPF_A)/sum;
+            zipf_cumuP[i] = zipf_temp/sum;
         else
-            zipf_cumuP[i] = zipf_cumuP[i-1] + ZIPF_C/pow((double)(i+2),ZIPF_A)/sum;
+            zipf_cumuP[i] = zipf_cumuP[i-1] + zipf_temp/sum;
     }
 }
 
 int zipf_pick(const double *zipf_cumuP){
-    unsigned int seed = 123;
+    unsigned int seed = rte_rdtsc();
     int index = 0;
     double data = (double)rand_r(&seed)/RAND_MAX;  //生成一个0~1的数
     while (data > zipf_cumuP[index])   //找索引,直到找到一个比他小的值,那么对应的index就是随机数了
@@ -107,18 +108,29 @@ uint32_t reversebytes_uint32t(uint32_t value){
         (value & 0x00FF0000U) >> 8 | (value & 0xFF000000U) >> 24; 
 }
 
+static void
+fill_ethernet_header(struct rte_ether_hdr *eth_hdr) {
+	struct rte_ether_addr s_addr = {{0xB8,0x83,0x03,0x82,0xA2,0x10}}; //cx2
+	struct rte_ether_addr d_addr = {{0x0C,0x42,0xA1,0xD8,0x10,0x88}}; //bf4
+	eth_hdr->src_addr =s_addr;
+	eth_hdr->dst_addr =d_addr;
+	eth_hdr->ether_type = rte_cpu_to_be_16(0x0800);
+}
 
 static void
-fill_ipv4_header(struct rte_ipv4_hdr *ipv4_hdr) {
+fill_ipv4_header(struct rte_ipv4_hdr *ipv4_hdr, const double *zipf_cumuP) {
 	ipv4_hdr->version_ihl = (4 << 4) + 5; // ipv4, length 5 (*4)
 	ipv4_hdr->type_of_service = 0; // No Diffserv
-	ipv4_hdr->total_length = rte_cpu_to_be_16(40); // tcp 20
+	ipv4_hdr->total_length = rte_cpu_to_be_16(PKT_LEN); // tcp 20
 	ipv4_hdr->packet_id = rte_cpu_to_be_16(5462); // set random
 	ipv4_hdr->fragment_offset = rte_cpu_to_be_16(0);
 	ipv4_hdr->time_to_live = 64;
-	ipv4_hdr->next_proto_id = 17; // tcp
+	ipv4_hdr->next_proto_id = 17; // udp
 	ipv4_hdr->hdr_checksum = rte_cpu_to_be_16(0x0);
 
+    // unsigned int seed = rte_rdtsc();
+    // uint32_t src_ip = rand_r(&seed)%FLOW_NUM;
+    // uint32_t src_ip = zipf_pick(zipf_cumuP);
     uint32_t src_ip = inet_addr("192.168.200.2");// cx2
     uint32_t dst_ip = inet_addr("192.168.200.1");// bf4
 	ipv4_hdr->src_addr = rte_cpu_to_be_32(reversebytes_uint32t(src_ip)); 
@@ -132,6 +144,7 @@ fill_udp_header(struct rte_udp_hdr *udp_hdr, struct rte_ipv4_hdr *ipv4_hdr, cons
 	udp_hdr->src_port = rte_cpu_to_be_16(0x162E);
     int dst_port = zipf_pick(zipf_cumuP);
 	udp_hdr->dst_port = rte_cpu_to_be_16(dst_port);
+    // udp_hdr->dst_port = rte_cpu_to_be_16(0x1503);
 	udp_hdr->dgram_len = rte_cpu_to_be_16(PKT_LEN - sizeof(struct rte_ipv4_hdr));
     udp_hdr->dgram_cksum = rte_cpu_to_be_16(0x0);
 	
@@ -158,7 +171,7 @@ static struct rte_mbuf *make_testpkt(uint32_t queue_id, double *zipf_cumuP)
     
     struct rte_mbuf *mp = rte_pktmbuf_alloc(pktmbuf_pool[queue_id]);
 
-    uint16_t pkt_len = PKT_LEN;
+    uint16_t pkt_len = PKT_LEN+sizeof(struct rte_ether_hdr);
     char *buf = rte_pktmbuf_append(mp, pkt_len);
     if (unlikely(buf == NULL)) {
         APP_LOG("Error: failed to allocate packet buffer.\n");
@@ -167,6 +180,7 @@ static struct rte_mbuf *make_testpkt(uint32_t queue_id, double *zipf_cumuP)
     }
 
     mp->data_len = pkt_len;
+    mp->pkt_len = pkt_len;
     uint16_t curr_ofs = 0;
 
     struct rte_ether_hdr *ether_h = rte_pktmbuf_mtod_offset(mp, struct rte_ether_hdr *, curr_ofs);
@@ -174,7 +188,7 @@ static struct rte_mbuf *make_testpkt(uint32_t queue_id, double *zipf_cumuP)
     curr_ofs += sizeof(struct rte_ether_hdr);
 
     struct rte_ipv4_hdr *ipv4_h = rte_pktmbuf_mtod_offset(mp, struct rte_ipv4_hdr *, curr_ofs);
-	fill_ipv4_header(ipv4_h);
+	fill_ipv4_header(ipv4_h, zipf_cumuP);
     curr_ofs += sizeof(struct rte_ipv4_hdr);
 
     // struct rte_tcp_hdr *tcp_h = rte_pktmbuf_mtod_offset(mp, struct rte_tcp_hdr *, curr_ofs);
@@ -184,9 +198,9 @@ static struct rte_mbuf *make_testpkt(uint32_t queue_id, double *zipf_cumuP)
     struct rte_udp_hdr *udp_h = rte_pktmbuf_mtod_offset(mp, struct rte_udp_hdr *, curr_ofs);
 	fill_udp_header(udp_h, ipv4_h,zipf_cumuP);
     curr_ofs += sizeof(struct rte_udp_hdr);
-
-    // struct message *pay_load;
-    // struct message data = {{"1"}};
+    
+    // struct payload * payload_data= rte_pktmbuf_mtod_offset(mp, struct payload *, curr_ofs);
+    // payload_data->data[0] = 1;
 
     return mp;
 }
@@ -220,24 +234,27 @@ static void lcore_main(uint32_t lcore_id)
     while (!force_quit/* && loop_count < 1000*/) {
         int i;
         for (i = 0; i < lconf->n_rx_queue; i++){
-        // Transmit packet
-        bufs_tx[0] = make_testpkt(lconf->rx_queue_list[i],pf);
-        uint16_t tx_count = 1;
-        uint16_t nb_tx = rte_eth_tx_burst(lconf->port, lconf->rx_queue_list[i], bufs_tx, tx_count);
-        total_tx += nb_tx;
-        // length += bufs_tx[0]->data_len;
-        if (nb_tx == 0){
-            rte_pktmbuf_free_bulk(bufs_tx, tx_count);
-        }
+            // Transmit packet
+            bufs_tx[0] = make_testpkt(lconf->rx_queue_list[i],pf);
+            uint16_t tx_count = 1;
+            uint16_t nb_tx = rte_eth_tx_burst(lconf->port, lconf->rx_queue_list[i], bufs_tx, tx_count);
+            total_tx += nb_tx;
+            length += (bufs_tx[0]->data_len*nb_tx);
+            if (nb_tx == 0){
+                rte_pktmbuf_free_bulk(bufs_tx, tx_count);
+            }
         }
         loop_count++;
     }
     // uint64_t time_interval = rte_rdtsc() - start;
     double time_interval = (double)(rte_rdtsc() - start)/rte_get_timer_hz();
     APP_LOG("run time: %lf.\n", time_interval);
-    APP_LOG("Sent %ld pkts, received %ld pkts, throughput: %lf pps, %lf bps.\n", total_tx, total_rx, (double)total_tx/time_interval, (double)length/time_interval);
+    APP_LOG("Sent %ld pkts, received %ld pkts, throughput: %lf pps, %lf bps.\n", total_tx, total_rx, (double)total_tx/time_interval, (double)length*8/time_interval);
     APP_LOG("times of loop is %ld, should send packets %ld.\n", loop_count, loop_count);
-
+    tx_pkt_num[lcore_id] = total_tx;
+    rx_pkt_num[lcore_id] = total_rx;
+    tx_pps[lcore_id] = (double)total_tx/time_interval;
+    tx_bps[lcore_id] = (double)length*8/time_interval;
 }
 
 static int
@@ -415,11 +432,18 @@ int main(int argc, char *argv[])
     static const char user_opts[] = "p:";	// port_num
     int opt;
     while ((opt = getopt(argc, argv, user_opts)) != EOF) {
+
         switch (opt) {
         case 'p':
             if (optarg[0] == '\0') rte_exit(EXIT_FAILURE, "Invalid port\n");
             enabled_port = strtoul(optarg, NULL, 10);
             break;
+        // case 's':
+        //     if (optarg[0] == '\0') rte_exit(EXIT_FAILURE, "Invalid port\n");
+        //     char test[20];
+        //     printf("test");
+        //     printf("%s\n",test);
+        //     break;
         default: rte_exit(EXIT_FAILURE, "Invalid arguments\n");
         }
     }
@@ -446,6 +470,17 @@ int main(int argc, char *argv[])
         } 
     }
 
+    int i;
+    uint64_t total_tx_pkt_num = 0, total_rx_pkt_num = 0;
+    double total_tx_pps = 0.0, total_tx_bps = 0.0;
+    for(i = 0; i < MAX_LCORES; i++){
+        total_tx_pkt_num += tx_pkt_num[i];
+        total_rx_pkt_num +=rx_pkt_num[i];
+        total_tx_pps += tx_pps[i];
+        total_tx_bps += tx_bps[i];
+    }
+    APP_LOG("Sent %ld pkts, received %ld pkts, throughput: %lf pps, %lf bps.\n", total_tx_pkt_num, total_rx_pkt_num, total_tx_pps, total_tx_bps);
+ 
     // /* Calculate minimum TSC diff for returning signed packets */
     // min_txintv *= rte_get_timer_hz() / US_PER_S;
     // printf("TSC freq: %lu Hz\n", rte_get_timer_hz());

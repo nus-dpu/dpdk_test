@@ -28,7 +28,7 @@
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024
 #define NUM_MBUFS 4095
-#define MBUF_SIZE            (2048+sizeof(struct rte_mbuf)+RTE_PKTMBUF_HEADROOM)
+#define MBUF_SIZE   (2048+sizeof(struct rte_mbuf)+RTE_PKTMBUF_HEADROOM)
 #define MBUF_CACHE_SIZE 32
 #define BURST_SIZE 64
 
@@ -36,6 +36,18 @@
     struct t *h = rte_pktmbuf_mtod_offset(m, struct t *, o)
 #define APP_LOG(...) RTE_LOG(INFO, USER1, __VA_ARGS__)
 #define PRN_COLOR(str) ("\033[0;33m" str "\033[0m")	// Yellow accent
+
+struct rte_eth_conf port_conf = {
+	.rxmode = {
+		.mq_mode = RTE_ETH_MQ_RX_RSS,
+	},
+	.rx_adv_conf = {
+		.rss_conf = {
+			.rss_key = NULL,
+			.rss_hf = RTE_ETH_RSS_IP | RTE_ETH_RSS_TCP | RTE_ETH_RSS_UDP,
+		},
+	},
+};
 
 struct lcore_configuration {
     uint32_t vid; // virtual core id
@@ -54,6 +66,13 @@ static volatile uint16_t nb_pending = 0;
 
 struct lcore_configuration lcore_conf[MAX_LCORES];
 struct rte_mempool *pktmbuf_pool[MAX_LCORES];
+
+uint64_t tx_pkt_num[MAX_LCORES];
+uint64_t rx_pkt_num[MAX_LCORES];
+uint64_t tx_pps[MAX_LCORES];
+uint64_t rx_pps[MAX_LCORES];
+double tx_bps[MAX_LCORES];
+double rx_bps[MAX_LCORES];
 
 
 /*
@@ -77,25 +96,35 @@ static void lcore_main(uint32_t lcore_id)
     uint64_t loop_count = 0, total_rx = 0, total_tx = 0;
 
     uint64_t start = rte_rdtsc();
-    
+    uint64_t length = 0;
+
     while (!force_quit/* && loop_count < 1000*/) {
         int i;
         for (i = 0; i < lconf->n_rx_queue; i++){
             const uint16_t nb_rx = rte_eth_rx_burst(lconf->port, lconf->rx_queue_list[i], bufs, BURST_SIZE);
+            if(nb_rx != 0){
+            struct rte_udp_hdr *udp_h = rte_pktmbuf_mtod_offset(bufs[0], struct rte_udp_hdr *, 34);
+            // printf("rss hash value: %d,pkt_len:%d,dst_port:%d,src_port:%d\n",
+            //     bufs[0]->hash.rss,
+            //     bufs[0]->data_len,
+            //     udp_h->dst_port,
+            //     udp_h->src_port);
+            }
         total_rx += nb_rx;
-
+        length += (bufs[0]->data_len*nb_rx);
         rte_pktmbuf_free_bulk(bufs, nb_rx);
         }
         
         loop_count++;
     }
-    uint64_t time_interval = rte_rdtsc() - start;
-    double run_time = (double)time_interval/rte_get_timer_hz();
-    APP_LOG("run time: %lf.\n", run_time);
-    APP_LOG("Sent %ld pkts, received %ld pkts.\n", total_tx, total_rx);
+    double time_interval = (double)(rte_rdtsc() - start)/rte_get_timer_hz();
+    APP_LOG("run time: %lf.\n", time_interval);
+    APP_LOG("Sent %ld pkts, received %ld pkts, throughput: %lf pps, %lf bps.\n", total_tx, total_rx, (double)total_rx/time_interval, (double)length*8/time_interval);
     APP_LOG("times of loop is %ld, should send packets %ld.\n", loop_count, loop_count*32);
-    APP_LOG("throughput %f pps.\n", total_rx/run_time);
-
+    tx_pkt_num[lcore_id] = total_tx;
+    rx_pkt_num[lcore_id] = total_rx;
+    rx_pps[lcore_id] = (double)total_rx/time_interval;
+    rx_bps[lcore_id] = (double)length*8/time_interval;
 }
 
 
@@ -110,7 +139,6 @@ launch_one_lcore(__attribute__((unused)) void *arg){
 static inline int
 port_init(uint16_t port)
 {
-	struct rte_eth_conf port_conf;
 	uint16_t rx_rings = 0, tx_rings = 0;
 	uint16_t nb_rxd = RX_RING_SIZE;
 	uint16_t nb_txd = TX_RING_SIZE;
@@ -125,8 +153,6 @@ port_init(uint16_t port)
 
 	if (!rte_eth_dev_is_valid_port(port))
 		return -1;
-
-	memset(&port_conf, 0, sizeof(struct rte_eth_conf));
 
 	retval = rte_eth_dev_info_get(port, &dev_info);
 	if (retval != 0) {
@@ -298,9 +324,6 @@ int main(int argc, char *argv[])
     if (port_init(enabled_port) != 0)
         rte_exit(EXIT_FAILURE, "Cannot init port %u\n", enabled_port);
 
-    if (rte_lcore_count() > 1)
-        printf("\nWARNING: Too many lcores enabled. Only 1 used.\n");
-
     /* Calculate minimum TSC diff for returning signed packets */
     min_txintv *= rte_get_timer_hz() / US_PER_S;
     printf("TSC freq: %lu Hz\n", rte_get_timer_hz());
@@ -313,6 +336,18 @@ int main(int argc, char *argv[])
             break;
         } 
     }
+
+    int i;
+    uint64_t total_tx_pkt_num = 0, total_rx_pkt_num = 0;
+    double total_rx_pps = 0.0, total_rx_bps = 0.0;
+    for(i = 0; i < MAX_LCORES; i++){
+        total_tx_pkt_num += tx_pkt_num[i];
+        total_rx_pkt_num +=rx_pkt_num[i];
+        total_rx_pps += rx_pps[i];
+        total_rx_bps += rx_bps[i];
+    }
+    APP_LOG("Sent %ld pkts, received %ld pkts, throughput: %lf pps, %lf bps.\n", total_tx_pkt_num, total_rx_pkt_num, total_rx_pps, total_rx_bps);
+
     /* Cleaning up. */
     fflush(stdout);
 APP_RTE_CLEANUP:
