@@ -16,6 +16,7 @@
 #include <rte_prefetch.h>
 #include <rte_ether.h>
 #include <rte_ip.h>
+#include <getopt.h>
 #include <unistd.h> // For sleep()
 #include <math.h> //For pow()
 
@@ -35,10 +36,8 @@
 #define PKT_LEN 1500
 #define PAY_LOAD_LEN (PKT_LEN-28) //udp
 
-#define GET_RTE_HDR(t, h, m, o) \
-    struct t *h = rte_pktmbuf_mtod_offset(m, struct t *, o)
 #define APP_LOG(...) RTE_LOG(INFO, USER1, __VA_ARGS__)
-#define PRN_COLOR(str) ("\033[0;33m" str "\033[0m")	// Yellow accent
+// #define PRN_COLOR(str) ("\033[0;33m" str "\033[0m")	// Yellow accent
 
 #define FLOW_NUM 1
 
@@ -59,9 +58,11 @@ struct payload
     char data[PAY_LOAD_LEN];/* data */
 };
 
+struct rte_ether_addr src_mac;
+struct rte_ether_addr dst_mac;
+
 struct rte_mempool *pktmbuf_pool[MAX_LCORES];
 static unsigned enabled_port = 0;
-static struct rte_ether_addr mac_addr;
 static uint64_t min_txintv = 15/*us*/;	// min cycles between 2 returned packets
 static volatile bool force_quit = false;
 static volatile uint16_t nb_pending = 0;
@@ -110,8 +111,8 @@ uint32_t reversebytes_uint32t(uint32_t value){
 
 static void
 fill_ethernet_header(struct rte_ether_hdr *eth_hdr) {
-	struct rte_ether_addr s_addr = {{0xB8,0x83,0x03,0x82,0xA2,0x10}}; //cx2
-	struct rte_ether_addr d_addr = {{0x0C,0x42,0xA1,0xD8,0x10,0x88}}; //bf4
+	struct rte_ether_addr s_addr = src_mac; //cx4
+	struct rte_ether_addr d_addr = dst_mac; //bf2
 	eth_hdr->src_addr =s_addr;
 	eth_hdr->dst_addr =d_addr;
 	eth_hdr->ether_type = rte_cpu_to_be_16(0x0800);
@@ -234,14 +235,16 @@ static void lcore_main(uint32_t lcore_id)
     while (!force_quit/* && loop_count < 1000*/) {
         int i;
         for (i = 0; i < lconf->n_rx_queue; i++){
+            int j;
+            for(j = 0; j < BURST_SIZE; j++){
+                bufs_tx[j] = make_testpkt(lconf->rx_queue_list[i],pf);
+            }
             // Transmit packet
-            bufs_tx[0] = make_testpkt(lconf->rx_queue_list[i],pf);
-            uint16_t tx_count = 1;
-            uint16_t nb_tx = rte_eth_tx_burst(lconf->port, lconf->rx_queue_list[i], bufs_tx, tx_count);
+            uint16_t nb_tx = rte_eth_tx_burst(lconf->port, lconf->rx_queue_list[i], bufs_tx, BURST_SIZE);
             total_tx += nb_tx;
             length += (bufs_tx[0]->data_len*nb_tx);
-            if (nb_tx == 0){
-                rte_pktmbuf_free_bulk(bufs_tx, tx_count);
+            if (nb_tx < BURST_SIZE){
+                rte_pktmbuf_free_bulk(bufs_tx, BURST_SIZE - nb_tx);
             }
         }
         loop_count++;
@@ -263,6 +266,68 @@ launch_one_lcore(__attribute__((unused)) void *arg){
 	lcore_main(lcore_id);
 	return 0;
 }
+
+int mac_read(char * mac_p, struct rte_ether_addr *mac_addr){
+    char mac_char[20];
+    char *pchStr;	
+    int  nTotal = 0;
+
+    strcpy(mac_char, mac_p);
+    pchStr = strtok(mac_char, ":");
+	
+    while (NULL != pchStr)
+	{
+    	mac_addr->addr_bytes[nTotal++] = strtol(pchStr,NULL,16);
+
+    	pchStr = strtok(NULL, ":");
+	}
+}
+
+/* Parse the argument given in the command line of the application */
+static int
+parse_app_opts(int argc, char **argv)
+{
+	int opt, ret;
+	char **argvopt;
+	int option_index = 0;
+	char *prgname = argv[0];
+	static struct option long_options[] = {
+		{"srcmac", 1, NULL, '1'},
+        {"dstmac", 1, NULL, '2'}
+
+	};
+
+	argvopt = argv;
+
+	while ((opt = getopt_long(argc, argvopt, "1:2:",
+				  long_options, &option_index)) != EOF) {
+
+		switch (opt) {
+		/* portmask */
+		case '1':
+            mac_read(optarg, &src_mac);
+			break;
+		case '2':
+            mac_read(optarg, &dst_mac);
+			break;
+		/* long options */
+		default:
+			rte_exit(EXIT_FAILURE, "Error: Wrong use of application arguments\n");
+			return -1;
+		}
+	}
+
+	if (optind >= 0)
+		argv[optind-1] = prgname;
+
+	ret = optind-1;
+	optind = 1; /* reset getopt lib */
+
+	return ret;
+}
+
+
+
 
 /* Main functional part of port initialization. 8< */
 static inline int
@@ -429,24 +494,10 @@ int main(int argc, char *argv[])
     argc -= ret; argv += ret;
 
     /* Parse app-specific arguments. */
-    static const char user_opts[] = "p:";	// port_num
-    int opt;
-    while ((opt = getopt(argc, argv, user_opts)) != EOF) {
-
-        switch (opt) {
-        case 'p':
-            if (optarg[0] == '\0') rte_exit(EXIT_FAILURE, "Invalid port\n");
-            enabled_port = strtoul(optarg, NULL, 10);
-            break;
-        // case 's':
-        //     if (optarg[0] == '\0') rte_exit(EXIT_FAILURE, "Invalid port\n");
-        //     char test[20];
-        //     printf("test");
-        //     printf("%s\n",test);
-        //     break;
-        default: rte_exit(EXIT_FAILURE, "Invalid arguments\n");
-        }
-    }
+	/* parse application arguments (after the EAL ones) */
+	ret = parse_app_opts(argc, argv);
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE, "Error: Wrong use of application arguments\n");
 
     /* Setup signal handler. */
     force_quit = false;
