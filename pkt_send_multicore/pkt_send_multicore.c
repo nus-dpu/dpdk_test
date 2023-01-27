@@ -30,7 +30,7 @@
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024
 #define NUM_MBUFS 4095
-#define MBUF_SIZE   (2048+sizeof(struct rte_mbuf)+RTE_PKTMBUF_HEADROOM)
+#define MBUF_SIZE   (10000+sizeof(struct rte_mbuf)+RTE_PKTMBUF_HEADROOM)
 #define MBUF_CACHE_SIZE 32
 #define BURST_SIZE 32
 #define PKT_LEN 1500
@@ -39,7 +39,7 @@
 #define APP_LOG(...) RTE_LOG(INFO, USER1, __VA_ARGS__)
 // #define PRN_COLOR(str) ("\033[0;33m" str "\033[0m")	// Yellow accent
 
-#define FLOW_NUM 1
+#define FLOW_NUM 1000
 
 #define ZIPF_A 0.75
 #define ZIPF_C 1.0
@@ -111,8 +111,8 @@ uint32_t reversebytes_uint32t(uint32_t value){
 
 static void
 fill_ethernet_header(struct rte_ether_hdr *eth_hdr) {
-	struct rte_ether_addr s_addr = src_mac; //cx4
-	struct rte_ether_addr d_addr = dst_mac; //bf2
+	struct rte_ether_addr s_addr = src_mac; 
+	struct rte_ether_addr d_addr = dst_mac;
 	eth_hdr->src_addr =s_addr;
 	eth_hdr->dst_addr =d_addr;
 	eth_hdr->ether_type = rte_cpu_to_be_16(0x0800);
@@ -129,10 +129,10 @@ fill_ipv4_header(struct rte_ipv4_hdr *ipv4_hdr, const double *zipf_cumuP) {
 	ipv4_hdr->next_proto_id = 17; // udp
 	ipv4_hdr->hdr_checksum = rte_cpu_to_be_16(0x0);
 
-    // unsigned int seed = rte_rdtsc();
-    // uint32_t src_ip = rand_r(&seed)%FLOW_NUM;
+    unsigned int seed = rte_rdtsc();
+    uint32_t src_ip = rand_r(&seed)%FLOW_NUM;
     // uint32_t src_ip = zipf_pick(zipf_cumuP);
-    uint32_t src_ip = inet_addr("192.168.200.2");// cx2
+    // uint32_t src_ip = inet_addr("192.168.200.2");// cx2
     uint32_t dst_ip = inet_addr("192.168.200.1");// bf4
 	ipv4_hdr->src_addr = rte_cpu_to_be_32(reversebytes_uint32t(src_ip)); 
 	ipv4_hdr->dst_addr = rte_cpu_to_be_32(reversebytes_uint32t(dst_ip)); 
