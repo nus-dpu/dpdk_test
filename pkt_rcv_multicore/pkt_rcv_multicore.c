@@ -103,16 +103,16 @@ static void lcore_main(uint32_t lcore_id)
         for (i = 0; i < lconf->n_rx_queue; i++){
             const uint16_t nb_rx = rte_eth_rx_burst(lconf->port, lconf->rx_queue_list[i], bufs, BURST_SIZE);
             if(nb_rx != 0){
-            struct rte_udp_hdr *udp_h = rte_pktmbuf_mtod_offset(bufs[0], struct rte_udp_hdr *, 34);
+            // struct rte_udp_hdr *udp_h = rte_pktmbuf_mtod_offset(bufs[0], struct rte_udp_hdr *, 34);
             // printf("rss hash value: %d,pkt_len:%d,dst_port:%d,src_port:%d\n",
             //     bufs[0]->hash.rss,
             //     bufs[0]->data_len,
             //     udp_h->dst_port,
             //     udp_h->src_port);
+                total_rx += nb_rx;
+                length += (bufs[0]->data_len*nb_rx);
+                rte_pktmbuf_free_bulk(bufs, nb_rx);
             }
-        total_rx += nb_rx;
-        length += (bufs[0]->data_len*nb_rx);
-        rte_pktmbuf_free_bulk(bufs, nb_rx);
         }
         
         loop_count++;
