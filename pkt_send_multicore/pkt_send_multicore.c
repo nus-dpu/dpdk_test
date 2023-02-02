@@ -33,13 +33,13 @@
 #define MBUF_SIZE   (10000+sizeof(struct rte_mbuf)+RTE_PKTMBUF_HEADROOM)
 #define MBUF_CACHE_SIZE 32
 #define BURST_SIZE 32
-#define PKT_LEN 1500
+#define PKT_LEN 64
 #define PAY_LOAD_LEN (PKT_LEN-28) //udp
 
 #define APP_LOG(...) RTE_LOG(INFO, USER1, __VA_ARGS__)
 // #define PRN_COLOR(str) ("\033[0;33m" str "\033[0m")	// Yellow accent
 
-#define FLOW_NUM 1000
+#define FLOW_NUM 100
 
 #define ZIPF_A 0.75
 #define ZIPF_C 1.0
@@ -71,8 +71,8 @@ struct lcore_configuration lcore_conf[MAX_LCORES];
 
 uint64_t tx_pkt_num[MAX_LCORES];
 uint64_t rx_pkt_num[MAX_LCORES];
-uint64_t tx_pps[MAX_LCORES];
-uint64_t rx_pps[MAX_LCORES];
+double tx_pps[MAX_LCORES];
+double rx_pps[MAX_LCORES];
 double tx_bps[MAX_LCORES];
 double rx_bps[MAX_LCORES];
 
