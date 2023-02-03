@@ -39,9 +39,9 @@
 #define APP_LOG(...) RTE_LOG(INFO, USER1, __VA_ARGS__)
 // #define PRN_COLOR(str) ("\033[0;33m" str "\033[0m")	// Yellow accent
 
-#define FLOW_NUM 100
+#define FLOW_NUM 100000
 
-#define ZIPF_A 0.75
+#define ZIPF_A 1.25
 #define ZIPF_C 1.0
 
 struct lcore_configuration {
@@ -142,10 +142,10 @@ fill_ipv4_header(struct rte_ipv4_hdr *ipv4_hdr, const double *zipf_cumuP) {
 
 static void
 fill_udp_header(struct rte_udp_hdr *udp_hdr, struct rte_ipv4_hdr *ipv4_hdr, const double *zipf_cumuP) {
-	udp_hdr->src_port = rte_cpu_to_be_16(0x162E);
+	// udp_hdr->src_port = rte_cpu_to_be_16(0x162E);
     int dst_port = zipf_pick(zipf_cumuP);
 	udp_hdr->dst_port = rte_cpu_to_be_16(dst_port);
-    // udp_hdr->dst_port = rte_cpu_to_be_16(0x1503);
+    udp_hdr->dst_port = rte_cpu_to_be_16(0x1503);
 	udp_hdr->dgram_len = rte_cpu_to_be_16(PKT_LEN - sizeof(struct rte_ipv4_hdr));
     udp_hdr->dgram_cksum = rte_cpu_to_be_16(0x0);
 	
@@ -227,7 +227,10 @@ static void lcore_main(uint32_t lcore_id)
     uint64_t perf_runtime_tsc = rte_rdtsc();	// Save starting time first
     uint64_t loop_count = 0, total_tx = 0, total_rx = 0;
     
-    double pf[FLOW_NUM];
+    double* pf = (double*)malloc(sizeof(double) * FLOW_NUM);
+    if(pf == NULL){
+        rte_exit(EXIT_FAILURE, "Cannot alloc memory for pf in %u\n", lcore_id);
+    }
     zipf_generate(pf);
     
     uint64_t start = rte_rdtsc();
