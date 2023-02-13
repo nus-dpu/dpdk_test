@@ -43,7 +43,7 @@ struct rte_flow *flow;
 #define FULL_MASK 0xffffffff /* full mask */
 #define EMPTY_MASK 0x0 /* empty mask */
 
-#define FLOW_NUM 60000
+#define FLOW_NUM 100000
 #define BURST_SIZE 32
 #define PKT_LEN 1500
 
@@ -273,10 +273,11 @@ main(int argc, char **argv)
 	/* Create flow for send packet with. 8< */    
 	int i;
 	for(i = 0 ; i < FLOW_NUM; i++){
-		flow = generate_ipv4_udp_flow(port_id, SRC_IP, FULL_MASK, 
-		                                       DEST_IP_PREFIX + i, FULL_MASK, 
-											   1234, 5678,
-											   &error);
+		// flow = generate_ipv4_udp_flow(port_id, SRC_IP, FULL_MASK, 
+		//                                        DEST_IP_PREFIX + i, FULL_MASK, 
+		// 									   1234, 5678,
+		// 									   &error);		   
+        flow = generate_ipv4_flow(port_id, 0, SRC_IP, FULL_MASK, DEST_IP_PREFIX + i, FULL_MASK, &error);
 		if (!flow) {
 			printf("Flow can't be created %d message: %s\n",
 			       error.type,
@@ -284,7 +285,7 @@ main(int argc, char **argv)
 		    rte_exit(EXIT_FAILURE, "error in creating flow");
 		}
 		else{
-			printf("add flow rule with dst_ip %d\n", DEST_IP_PREFIX + i);
+			printf("already add %d flows\n", i+1);
 		}
 	}
 	/* >8 End of create flow and the flow rule. */

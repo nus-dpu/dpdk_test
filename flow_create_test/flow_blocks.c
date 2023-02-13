@@ -3,9 +3,13 @@
  */
 
 #define IPV4_PATTERN_NUM		3
-#define MAX_ACTION_NUM		2
+#define IPV4_ACTION_NUM		2
 
 #define IPV4_UDP_PATTERN_NUM 4
+#define IPV4_UDP_ACTION_NUM 3
+
+#define IPV4_UDP_PATTERN_NUM 4
+#define IPV4_UDP_ACTION_NUM 3
 
 struct rte_flow *
 generate_ipv4_flow(uint16_t port_id, uint16_t rx_q,
@@ -53,7 +57,7 @@ generate_ipv4_flow(uint16_t port_id, uint16_t rx_q,
 	/* Declaring structs being used. 8< */
 	struct rte_flow_attr attr;
 	struct rte_flow_item pattern[IPV4_PATTERN_NUM];
-	struct rte_flow_action action[MAX_ACTION_NUM];
+	struct rte_flow_action action[IPV4_ACTION_NUM];
 	struct rte_flow *flow = NULL;
 	struct rte_flow_action_queue queue = { .index = rx_q };
 	struct rte_flow_item_ipv4 ip_spec;
@@ -73,8 +77,9 @@ generate_ipv4_flow(uint16_t port_id, uint16_t rx_q,
 	 * create the action sequence.
 	 * one action only,  move packet to queue
 	 */
-	action[0].type = RTE_FLOW_ACTION_TYPE_QUEUE;
-	action[0].conf = &queue;
+	// action[0].type = RTE_FLOW_ACTION_TYPE_QUEUE;
+	// action[0].conf = &queue;
+	action[0].type = RTE_FLOW_ACTION_TYPE_DROP;
 	action[1].type = RTE_FLOW_ACTION_TYPE_END;
 
 	/*
@@ -131,7 +136,7 @@ generate_ipv4_udp_flow(uint16_t port_id,
 	/* Declaring structs being used. 8< */
 	struct rte_flow_attr attr;
 	struct rte_flow_item pattern[IPV4_UDP_PATTERN_NUM];
-	struct rte_flow_action action[MAX_ACTION_NUM];
+	struct rte_flow_action action[IPV4_UDP_ACTION_NUM];
 	struct rte_flow *flow = NULL;
 	struct rte_flow_action_count counter = { .id = 1 };
 	struct rte_flow_item_ipv4 ip_spec;
@@ -147,7 +152,7 @@ generate_ipv4_udp_flow(uint16_t port_id,
 	/* Set the rule attribute, only ingress packets will be checked. 8< */
 	memset(&attr, 0, sizeof(struct rte_flow_attr));
 	attr.priority = 0;
-	attr.egress = 1;
+	attr.ingress = 1;
 	/* >8 End of setting the rule attribute. */
 
 	/*
@@ -213,3 +218,4 @@ generate_ipv4_udp_flow(uint16_t port_id,
 	return flow;
 }
 /* >8 End of function responsible for creating the flow rule. */
+
