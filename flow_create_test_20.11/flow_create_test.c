@@ -153,7 +153,7 @@ init_port(void)
 
 	ret = rte_eth_dev_info_get(port_id, &dev_info);
 	if (ret != 0){
-		rte_exit(EXIT_FAILURE,
+		rte_uexit(EXIT_FAILURE,
 			"Error during getting device (port %u) info: %s\n",
 			port_id, strerror(-ret));
 	}
