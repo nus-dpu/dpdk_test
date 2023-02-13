@@ -74,7 +74,7 @@ main_loop(void)
         for(i = 0; i < BURST_SIZE; i++){
             bufs_tx[i] = make_testpkt(mbuf_pool);
 			if (bufs_tx[i] == NULL)
-			    printf("Error: failed to allocate packet buffer");
+			    printf("Error: failed to allocate packet buffer\n");
         }
         // Transmit packet
         nb_tx = rte_eth_tx_burst(port_id, 0, bufs_tx, BURST_SIZE);
@@ -148,11 +148,15 @@ init_port(void)
 	struct rte_eth_rxconf rxq_conf;
 	struct rte_eth_dev_info dev_info;
 
+	if (!rte_eth_dev_is_valid_port(port_id))
+		rte_exit(EXIT_FAILURE,"Port is not valid\n");
+
 	ret = rte_eth_dev_info_get(port_id, &dev_info);
-	if (ret != 0)
+	if (ret != 0){
 		rte_exit(EXIT_FAILURE,
 			"Error during getting device (port %u) info: %s\n",
 			port_id, strerror(-ret));
+	}
 
 	port_conf.txmode.offloads &= dev_info.tx_offload_capa;
 	printf(":: initializing port: %d\n", port_id);
@@ -278,7 +282,10 @@ main(int argc, char **argv)
 			       error.type,
 			       error.message ? error.message : "(no stated reason)");
 		    rte_exit(EXIT_FAILURE, "error in creating flow");
-	}
+		}
+		else{
+			printf("add flow rule with dst_ip %d\n", DEST_IP_PREFIX + i);
+		}
 	}
 	/* >8 End of create flow and the flow rule. */
 	
