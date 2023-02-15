@@ -39,7 +39,7 @@ struct rte_flow *flow;
 #define MBUF_CACHE_SIZE 250
 
 #define SRC_IP ((0<<24) + (0<<16) + (0<<8) + 0) /* src ip = 0.0.0.0 */
-#define DEST_IP_PREFIX ((192<<24)) /* dest ip = 192.168.1.1 */
+#define DEST_IP_PREFIX ((192<<24)) /* dest ip prefix = 192.0.0.0.0 */
 #define FULL_MASK 0xffffffff /* full mask */
 #define EMPTY_MASK 0x0 /* empty mask */
 
