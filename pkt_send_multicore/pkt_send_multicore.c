@@ -17,7 +17,7 @@
 #include <rte_ether.h>
 #include <rte_ip.h>
 #include <getopt.h>
-#include <unistd.h> // For sleep()
+#include <unistd.h> //For sleep()
 #include <math.h> //For pow()
 
 #define APP_ETHER_TYPE  0x2222
@@ -33,13 +33,15 @@
 #define MBUF_SIZE   (10000+sizeof(struct rte_mbuf)+RTE_PKTMBUF_HEADROOM)
 #define MBUF_CACHE_SIZE 32
 #define BURST_SIZE 32
-#define PKT_LEN 64
 #define PAY_LOAD_LEN (PKT_LEN-28) //udp
 
 #define APP_LOG(...) RTE_LOG(INFO, USER1, __VA_ARGS__)
 // #define PRN_COLOR(str) ("\033[0;33m" str "\033[0m")	// Yellow accent
 
-#define FLOW_NUM 100000
+#define DEST_IP_PREFIX ((192<<24)) /* dest ip prefix = 192.0.0.0.0 */
+
+#define FLOW_NUM 10
+#define PKT_LEN 64
 
 #define ZIPF_A 1.25
 #define ZIPF_C 1.0
@@ -131,10 +133,13 @@ fill_ipv4_header(struct rte_ipv4_hdr *ipv4_hdr, const double *zipf_cumuP) {
 
     unsigned int seed = rte_rdtsc();
     uint32_t src_ip = rand_r(&seed)%FLOW_NUM;
-    // uint32_t src_ip = zipf_pick(zipf_cumuP);
+    // uint32_t test_ip = zipf_pick(zipf_cumuP);
+    
     // uint32_t src_ip = inet_addr("192.168.200.2");// cx2
     uint32_t dst_ip = inet_addr("192.168.200.1");// bf4
-	ipv4_hdr->src_addr = rte_cpu_to_be_32(reversebytes_uint32t(src_ip)); 
+
+	// ipv4_hdr->src_addr = rte_cpu_to_be_32(reversebytes_uint32t(src_ip)); 
+    ipv4_hdr->src_addr = rte_cpu_to_be_32(DEST_IP_PREFIX+src_ip); 
 	ipv4_hdr->dst_addr = rte_cpu_to_be_32(reversebytes_uint32t(dst_ip)); 
 
 	ipv4_hdr->hdr_checksum = rte_cpu_to_be_16(rte_ipv4_cksum(ipv4_hdr));
@@ -142,10 +147,15 @@ fill_ipv4_header(struct rte_ipv4_hdr *ipv4_hdr, const double *zipf_cumuP) {
 
 static void
 fill_udp_header(struct rte_udp_hdr *udp_hdr, struct rte_ipv4_hdr *ipv4_hdr, const double *zipf_cumuP) {
-	// udp_hdr->src_port = rte_cpu_to_be_16(0x162E);
-    int dst_port = zipf_pick(zipf_cumuP);
+    uint16_t src_port = 0x162E;
+    uint16_t dst_port = 0x1503;
+    // unsigned int seed = rte_rdtsc();
+    // uint16_t dst_port = rand_r(&seed)%FLOW_NUM;
+    // uint16_t dst_port = zipf_pick(zipf_cumuP);
+
+    
+    udp_hdr->src_port = rte_cpu_to_be_16(src_port);
 	udp_hdr->dst_port = rte_cpu_to_be_16(dst_port);
-    udp_hdr->dst_port = rte_cpu_to_be_16(0x1503);
 	udp_hdr->dgram_len = rte_cpu_to_be_16(PKT_LEN - sizeof(struct rte_ipv4_hdr));
     udp_hdr->dgram_cksum = rte_cpu_to_be_16(0x0);
 	
@@ -256,7 +266,7 @@ static void lcore_main(uint32_t lcore_id)
     double time_interval = (double)(rte_rdtsc() - start)/rte_get_timer_hz();
     APP_LOG("run time: %lf.\n", time_interval);
     APP_LOG("Sent %ld pkts, received %ld pkts, throughput: %lf pps, %lf bps.\n", total_tx, total_rx, (double)total_tx/time_interval, (double)length*8/time_interval);
-    APP_LOG("times of loop is %ld, should send packets %ld.\n", loop_count, loop_count);
+    APP_LOG("times of loop is %ld, should send packets %ld.\n", loop_count, loop_count*BURST_SIZE);
     tx_pkt_num[lcore_id] = total_tx;
     rx_pkt_num[lcore_id] = total_rx;
     tx_pps[lcore_id] = (double)total_tx/time_interval;
