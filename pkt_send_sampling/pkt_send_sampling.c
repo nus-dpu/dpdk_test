@@ -587,17 +587,30 @@ APP_RTE_CLEANUP:
     rte_eth_dev_stop(enabled_port);
     rte_eth_dev_close(enabled_port);
     printf("Done.\n");
-
+    int j;
     double total_tx_bps_timeline[MAX_RECORD_COUNT]={0};
     double total_tx_pps_timeline[MAX_RECORD_COUNT]={0};
+    double to_print;
     printf("pps of FLOW_NUM = %d\n",FLOW_NUM);
     for (i = 0;i<MAX_RECORD_COUNT;i++){
-        printf("%lf ",total_tx_pps_timeline[i]+tx_pps_timeline[18][i]+tx_pps_timeline[19][i]+tx_pps_timeline[20][i]+tx_pps_timeline[21][i]);
+        // printf("%lf ",total_tx_pps_timeline[i]+tx_pps_timeline[18][i]+tx_pps_timeline[19][i]+tx_pps_timeline[20][i]+tx_pps_timeline[21][i]);
+        // printf("\n");
+        to_print = total_tx_pps_timeline[i];
+        for (j = 0;j<MAX_LCORES;j++){
+            to_print += tx_pps_timeline[j][i];
+        }
+        printf("%lf ",to_print);
         printf("\n");
     }
     printf("bps of FLOW_NUM= %d\n",FLOW_NUM);
     for (i = 0;i<MAX_RECORD_COUNT;i++){
-        printf("%lf ",total_tx_bps_timeline[i]+tx_bps_timeline[18][i]+tx_bps_timeline[19][i]+tx_bps_timeline[20][i]+tx_bps_timeline[21][i]);
+        // printf("%lf ",total_tx_bps_timeline[i]+tx_bps_timeline[18][i]+tx_bps_timeline[19][i]+tx_bps_timeline[20][i]+tx_bps_timeline[21][i]);
+        // printf("\n");
+        to_print = total_tx_bps_timeline[i];
+        for (j = 0;j<MAX_LCORES;j++){
+            to_print += tx_bps_timeline[j][i];
+        }
+        printf("%lf ",to_print);
         printf("\n");
     }
     return 0;
