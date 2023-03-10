@@ -8,5 +8,5 @@
 
 allow_experimental_apis = true
 sources = files(
-        'pkt_send_multicore.c',
+        'pkt_send_sampling.c',
 )

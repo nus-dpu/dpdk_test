@@ -40,7 +40,7 @@
 
 #define DEST_IP_PREFIX ((192<<24)) /* dest ip prefix = 192.0.0.0.0 */
 
-#define FLOW_NUM 10
+#define FLOW_NUM 50000
 #define PKT_LEN 64
 
 #define ZIPF_A 1.25

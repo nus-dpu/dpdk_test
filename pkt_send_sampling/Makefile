@@ -2,10 +2,10 @@
 # Copyright(c) 2010-2014 Intel Corporation
 
 # binary name
-APP = pkt_send_multicore
+APP = pkt_send_sampling
 
 # all source are stored in SRCS-y
-SRCS-y := pkt_send_multicore.c
+SRCS-y := pkt_send_sampling.c
 
 PKGCONF ?= pkg-config
 
