@@ -32,7 +32,7 @@
 #define MBUF_CACHE_SIZE 32
 #define BURST_SIZE 64
 
-#define MAX_RECORD_COUNT 32
+#define MAX_RECORD_COUNT 64
 
 #define GET_RTE_HDR(t, h, m, o) \
     struct t *h = rte_pktmbuf_mtod_offset(m, struct t *, o)
@@ -391,7 +391,7 @@ APP_RTE_CLEANUP:
     double to_print;
     for (i = 0;i<MAX_RECORD_COUNT;i++){
         to_print = total_rx_pps_timeline[i];
-        for (j = 0;j<20;j++){
+        for (j = 0;j<MAX_LCORES;j++){
             to_print += rx_pps_timeline[j][i];
         }
         printf("%lf ",to_print);
@@ -400,7 +400,7 @@ APP_RTE_CLEANUP:
     printf("bps\n");
     for (i = 0;i<MAX_RECORD_COUNT;i++){
         to_print = total_rx_bps_timeline[i];
-        for (j = 0;j<20;j++){
+        for (j = 0;j<MAX_LCORES;j++){
             to_print += rx_bps_timeline[j][i];
         }
         printf("%lf ",to_print);
