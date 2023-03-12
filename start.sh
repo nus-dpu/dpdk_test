@@ -30,10 +30,7 @@ cd /home/qyn/software/FastNIC/$file_name/
 make clean
 make
 
-if [[ ${file_name} == "pkt_send_multicore" ]]
-then
-    sudo ./build/$file_name -l ${core_id} -a ${src_pci} -- --srcmac ${src_mac} --dstmac ${dst_mac} 
-elif [[ ${file_name} == "pkt_send_sampling" ]]
+if [[ [ ${file_name} == "pkt_send_multicore" ] || [ ${file_name} == "pkt_send_sampling" ] ]]
 then
     sudo ./build/$file_name -l ${core_id} -a ${src_pci} -- --srcmac ${src_mac} --dstmac ${dst_mac} 
 else
