@@ -2,3 +2,4 @@ run.sh
 */build/
 auto_run
 ovs_pipeline
+lab_results/
