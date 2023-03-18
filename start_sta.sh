@@ -5,6 +5,7 @@ core_id=$4
 flow_num=$5
 pkt_len=$6
 test_time=$7 #run_time = test_time * 0.5s
+run_path=$8
 echo run ${file_name} app, from ${src_nic_name} to ${dst_ip}
 
 src_mac=`ifconfig ${src_nic_name}|grep ether|awk '{print $2}'`
@@ -29,7 +30,7 @@ echo dst_mac:${dst_mac}
 echo -e '\n'
 
 export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig/ #149
-cd /home/qyn/software/FastNIC/$file_name/
+cd $run_path/$file_name/
 make clean
 make
 
