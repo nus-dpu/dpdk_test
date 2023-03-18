@@ -19,6 +19,7 @@
 #include <getopt.h>
 #include <unistd.h> //For sleep()
 #include <math.h> //For pow()
+#include <sys/time.h>
 
 #include "para.h"
 
@@ -292,9 +293,9 @@ static void lcore_main(uint32_t lcore_id)
     }
     // uint64_t time_interval = rte_rdtsc() - start;
     double time_interval = (double)(rte_rdtsc() - start)/rte_get_timer_hz();
-    APP_LOG("lcoreID %ld: run time: %lf.\n", lcore_id, time_interval);
-    APP_LOG("lcoreID %ld: Sent %ld pkts, received %ld pkts, throughput: %lf pps, %lf bps.\n", lcore_id, total_tx, total_rx, (double)total_tx/time_interval, (double)length*8/time_interval);
-    APP_LOG("lcoreID %ld: times of loop is %ld, should send packets %ld.\n", lcore_id, loop_count, loop_count*BURST_SIZE);
+    APP_LOG("lcoreID %d: run time: %lf.\n", lcore_id, time_interval);
+    APP_LOG("lcoreID %d: Sent %ld pkts, received %ld pkts, throughput: %lf pps, %lf bps.\n", lcore_id, total_tx, total_rx, (double)total_tx/time_interval, (double)length*8/time_interval);
+    APP_LOG("lcoreID %d: times of loop is %ld, should send packets %ld.\n", lcore_id, loop_count, loop_count*BURST_SIZE);
     tx_pkt_num[lcore_id] = total_tx;
     rx_pkt_num[lcore_id] = total_rx;
     tx_pps[lcore_id] = (double)total_tx/time_interval;
@@ -417,8 +418,8 @@ port_init(uint16_t port, uint32_t *n_lcores_p)
     // assign each lcore some RX & TX queues and a port
     uint32_t rx_queues_per_lcore = RX_QUEUE_PER_LCORE;
     uint32_t tx_queues_per_lcore = TX_QUEUE_PER_LCORE;
-    rx_rings = (n_lcores) * RX_QUEUE_PER_LCORE;
-    tx_rings = (n_lcores) * TX_QUEUE_PER_LCORE;
+    rx_rings = n_lcores * RX_QUEUE_PER_LCORE;
+    tx_rings = n_lcores * TX_QUEUE_PER_LCORE;
 
     uint32_t rx_queue_id = 0;
     uint32_t tx_queue_id = 0;
@@ -530,7 +531,6 @@ int main(int argc, char *argv[])
     unsigned nb_ports;
     unsigned lcore_id;
     uint32_t n_lcores = 0;
-    uint32_t *n_lcores_p = &n_lcores;
     int i,j;
 
     /* Initialize the Environment Abstraction Layer (EAL). */
@@ -555,7 +555,7 @@ int main(int argc, char *argv[])
         rte_exit(EXIT_FAILURE, "Error: Specified port out-of-range\n");
 
     /* Initialize the ports. */
-    if (port_init(enabled_port, n_lcores_p) != 0)
+    if (port_init(enabled_port, &n_lcores) != 0)
         rte_exit(EXIT_FAILURE, "Cannot init port %u\n", enabled_port);
     
     printf("core_num:%d\n",n_lcores);
@@ -571,9 +571,12 @@ int main(int argc, char *argv[])
     uint64_t total_tx_pkt_num = 0, total_rx_pkt_num = 0;
     double total_tx_pps = 0.0, total_tx_bps = 0.0;
     FILE *fp;
+    struct timeval timetag;
+
+    gettimeofday(&timetag, NULL);
     if (unlikely(access("../lab_results/pkt_send_mul_auto_sta/throughput.csv", 0) != 0)){
         fp = fopen("../lab_results/pkt_send_mul_auto_sta/throughput.csv", "a+");
-        fprintf(fp, "core,flow_num,pkt_len,send_pkts,rcv_pkts,send_pps,send_bps,rcv_pps,rcv_bps\r\n");
+        fprintf(fp, "core,timestamp,flow_num,pkt_len,send_pkts,rcv_pkts,send_pps,send_bps,rcv_pps,rcv_bps\r\n");
     }else{
         fp = fopen("../lab_results/pkt_send_mul_auto_sta/throughput.csv", "a+");
     }
@@ -583,7 +586,7 @@ int main(int argc, char *argv[])
         total_tx_pps += tx_pps[i];
         total_tx_bps += tx_bps[i];
     }
-    fprintf(fp, "%d,%d,%ld,%ld,%lf,%lf,0,0\r\n", n_lcores, FLOW_NUM, PKT_LEN, total_tx_pkt_num, total_rx_pkt_num, total_tx_pps, total_tx_bps);
+    fprintf(fp, "%d,%ld,%d,%d,%ld,%ld,%lf,%lf,0,0\r\n", n_lcores, timetag.tv_sec, FLOW_NUM, PKT_LEN, total_tx_pkt_num, total_rx_pkt_num, total_tx_pps, total_tx_bps);
     fclose(fp);
     APP_LOG("Total Sent %ld pkts, received %ld pkts, throughput: %lf pps, %lf bps.\n", total_tx_pkt_num, total_rx_pkt_num, total_tx_pps, total_tx_bps);
  
@@ -591,7 +594,7 @@ int main(int argc, char *argv[])
 
     if (unlikely(access("../lab_results/pkt_send_mul_auto_sta/throughput_pps.csv", 0) != 0)){
         fp = fopen("../lab_results/pkt_send_mul_auto_sta/throughput_pps.csv", "a+");
-        fprintf(fp, "core,flow_num,pkt_len,time,send_pps\r\n");
+        fprintf(fp, "core,timestamp,flow_num,pkt_len,time,send_pps\r\n");
     }else{
         fp = fopen("../lab_results/pkt_send_mul_auto_sta/throughput_pps.csv", "a+");
     }
@@ -600,13 +603,13 @@ int main(int argc, char *argv[])
         for (j = 0;j<MAX_LCORES;j++){
             to_print += tx_pps_timeline[j][i];
         }
-        fprintf(fp, "%d,%d,%ld,%d,%lf\r\n", n_lcores, FLOW_NUM, PKT_LEN,i,to_print);
+        fprintf(fp, "%d,%ld,%d,%d,%d,%lf\r\n", n_lcores, timetag.tv_sec, FLOW_NUM, PKT_LEN, i, to_print);
     }
     fclose(fp);
 
     if (unlikely(access("../lab_results/pkt_send_mul_auto_sta/throughput_bps.csv", 0) != 0)){
         fp = fopen("../lab_results/pkt_send_mul_auto_sta/throughput_bps.csv", "a+");
-        fprintf(fp, "core,flow_num,pkt_len,time,send_bps\r\n");
+        fprintf(fp, "core,timestamp,flow_num,pkt_len,time,send_bps\r\n");
     }else{
         fp = fopen("../lab_results/pkt_send_mul_auto_sta/throughput_bps.csv", "a+");
     }
@@ -615,7 +618,7 @@ int main(int argc, char *argv[])
         for (j = 0;j<MAX_LCORES;j++){
             to_print += tx_bps_timeline[j][i];
         }
-        fprintf(fp, "%d,%d,%ld,%d,%lf\r\n", n_lcores, FLOW_NUM, PKT_LEN,i,to_print);
+        fprintf(fp, "%d,%ld,%d,%d,%d,%lf\r\n", n_lcores, timetag.tv_sec, FLOW_NUM, PKT_LEN, i, to_print);
     }
     fclose(fp);
 

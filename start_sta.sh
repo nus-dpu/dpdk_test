@@ -33,14 +33,19 @@ cd /home/qyn/software/FastNIC/$file_name/
 make clean
 make
 
+if [[ ! -d "../lab_results/${file_name}" ]]
+then
+    mkdir ../lab_results/${file_name}
+fi
+
 if [[ ${file_name} == "pkt_send_mul_auto_sta" ]]
 then
-    if [[ ! -d "../lab_results/${file_name}" ]]
-    then
-        mkdir ../lab_results/${file_name}
-    fi
     sed -i "s/#define FLOW_NUM.*$/#define FLOW_NUM ${flow_num}/" para.h
     sed -i "s/#define PKT_LEN.*$/#define PKT_LEN ${pkt_len}/" para.h
     sed -i "s/#define MAX_RECORD_COUNT.*$/#define MAX_RECORD_COUNT ${test_time}/" para.h
     sudo ./build/$file_name -l ${core_id} -a ${src_pci} -- --srcmac ${src_mac} --dstmac ${dst_mac} 
+elif [[ ${file_name} == "pkt_rcv_mul_auto_sta" ]]
+then
+    sed -i "s/#define MAX_RECORD_COUNT.*$/#define MAX_RECORD_COUNT ${test_time}/" para.h
+    sudo ./build/$file_name -l ${core_id} -a ${src_pci}
 fi
