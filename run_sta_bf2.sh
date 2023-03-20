@@ -1,9 +1,9 @@
 test_time=5
-user="qyn"
+user=$1
 if [[ ${user} == "cz" ]]
 then
-    run_path=""
-    password=""
+    run_path="/home/cz/3_20/FastNIC"
+    password="123456"
 elif [[ ${user} == "qyn" ]]
 then
     run_path="/home/qyn/software/FastNIC"
