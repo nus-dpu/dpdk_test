@@ -1,4 +1,5 @@
-#!/usr/bin/expecttest_time
+#!/usr/bin/expect -f2
+set timeout 10
 set test_time [lindex $argv 0]
 set run_path [lindex $argv 1]
 set user [lindex $argv 2]
