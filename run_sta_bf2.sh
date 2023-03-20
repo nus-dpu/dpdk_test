@@ -1,12 +1,22 @@
 test_time=5
-run_path="/home/qyn/software/FastNIC"
+user="qyn"
+if [[ ${user} == "cz" ]]
+then
+    run_path=""
+    password=""
+elif [[ ${user} == "qyn" ]]
+then
+    run_path="/home/qyn/software/FastNIC"
+    password="nesc77qq"
+fi
+
 for core_id in {18,18-19}
 do
     for flow_num in {100,10000}
     do
-        nohup expect remote_run_sta.expect $test_time $run_path >> lab_results/log/remote.out 2>&1 &
+        nohup expect remote_run_sta.expect $test_time $run_path $user $password>> lab_results/log/remote.out 2>&1 &
         ./start_sta.sh pkt_send_mul_auto_sta enp216s0f0 "192.168.200.2" $core_id $flow_num 64 $test_time $run_path #149,bf2tocx4
-        sleep 60s
+        sleep 1s
     done
 done
 
