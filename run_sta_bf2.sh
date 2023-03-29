@@ -10,11 +10,9 @@ then
     password="nesc77qq"
 fi
 
-# for core_id in {18,18-19,18-21,18-23,18-25,18-27,18-29,18-31,18-33,18-35}
-for core_id in {18,18-19}
+for core_id in {18,18-19,18-21,18-23,18-25,18-27,18-29,18-31,18-33,18-35}
 do
-    # for flow_num in {100,1000,10000,30000,50000,70000,90000,100000}
-    for flow_num in {100}
+    for flow_num in {100,1000,10000,30000,50000,70000,90000,100000}
     do
         nohup expect remote_run_sta.expect $test_time $run_path $user $password>> lab_results/log/remote.out 2>&1 &
         sleep 5s
