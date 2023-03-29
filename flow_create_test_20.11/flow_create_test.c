@@ -281,7 +281,7 @@ main(int argc, char **argv)
 			printf("Flow can't be created %d message: %s\n",
 			       error.type,
 			       error.message ? error.message : "(no stated reason)");
-		    rte_exit(EXIT_FAILURE, "error in creating flow");
+			rte_exit(EXIT_FAILURE, "error in creating flow");
 		}
 		else{
 			printf("already add %d flows\n", i+1);
