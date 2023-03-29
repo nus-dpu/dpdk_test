@@ -31,8 +31,6 @@ echo -e '\n'
 
 export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig/ #149
 cd $run_path/$file_name/
-make clean
-make
 
 if [[ ! -d "../lab_results/${file_name}" ]]
 then
@@ -44,9 +42,14 @@ then
     sed -i "s/#define FLOW_NUM.*$/#define FLOW_NUM ${flow_num}/" para.h
     sed -i "s/#define PKT_LEN.*$/#define PKT_LEN ${pkt_len}/" para.h
     sed -i "s/#define MAX_RECORD_COUNT.*$/#define MAX_RECORD_COUNT ${test_time}/" para.h
+    echo "sudo ./build/$file_name -l ${core_id} -a ${src_pci} -- --srcmac ${src_mac} --dstmac ${dst_mac}"
+    make clean
+    make
     sudo ./build/$file_name -l ${core_id} -a ${src_pci} -- --srcmac ${src_mac} --dstmac ${dst_mac} 
 elif [[ ${file_name} == "pkt_rcv_mul_auto_sta" ]]
 then
     sed -i "s/#define MAX_RECORD_COUNT.*$/#define MAX_RECORD_COUNT ${test_time}/" para.h
+    make clean
+    make
     sudo ./build/$file_name -l ${core_id} -a ${src_pci}
 fi

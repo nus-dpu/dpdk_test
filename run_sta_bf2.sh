@@ -1,4 +1,4 @@
-test_time=5
+test_time=15
 user=$1
 if [[ ${user} == "cz" ]]
 then
@@ -10,13 +10,16 @@ then
     password="nesc77qq"
 fi
 
+# for core_id in {18,18-19,18-21,18-23,18-25,18-27,18-29,18-31,18-33,18-35}
 for core_id in {18,18-19}
 do
-    for flow_num in {100,10000}
+    # for flow_num in {100,1000,10000,30000,50000,70000,90000,100000}
+    for flow_num in {100}
     do
         nohup expect remote_run_sta.expect $test_time $run_path $user $password>> lab_results/log/remote.out 2>&1 &
+        sleep 5s
         ./start_sta.sh pkt_send_mul_auto_sta enp216s0f0 "192.168.200.2" $core_id $flow_num 64 $test_time $run_path #149,bf2tocx4
-        sleep 1s
+        sleep 20s
     done
 done
 
