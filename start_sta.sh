@@ -37,12 +37,12 @@ then
     mkdir ../lab_results/${file_name}
 fi
 
+echo "sudo ./build/$file_name -l ${core_id} -a ${src_pci} -- --srcmac ${src_mac} --dstmac ${dst_mac}"
 if [[ ${file_name} == "pkt_send_mul_auto_sta" ]]
 then
     sed -i "s/#define FLOW_NUM.*$/#define FLOW_NUM ${flow_num}/" para.h
     sed -i "s/#define PKT_LEN.*$/#define PKT_LEN ${pkt_len}/" para.h
     sed -i "s/#define MAX_RECORD_COUNT.*$/#define MAX_RECORD_COUNT ${test_time}/" para.h
-    echo "sudo ./build/$file_name -l ${core_id} -a ${src_pci} -- --srcmac ${src_mac} --dstmac ${dst_mac}"
     make clean
     make
     sudo ./build/$file_name -l ${core_id} -a ${src_pci} -- --srcmac ${src_mac} --dstmac ${dst_mac} 
