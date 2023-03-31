@@ -579,11 +579,11 @@ int main(int argc, char *argv[])
     struct timeval timetag;
 
     gettimeofday(&timetag, NULL);
-    if (unlikely(access("../lab_results/pkt_send_mul_auto_sta/throughput.csv", 0) != 0)){
-        fp = fopen("../lab_results/pkt_send_mul_auto_sta/throughput.csv", "a+");
+    if (unlikely(access("../lab_results/pkt_send_mul_auto_sta2/throughput.csv", 0) != 0)){
+        fp = fopen("../lab_results/pkt_send_mul_auto_sta2/throughput.csv", "a+");
         fprintf(fp, "core,timestamp,flow_num,pkt_len,send_pkts,rcv_pkts,send_pps,send_bps,rcv_pps,rcv_bps\r\n");
     }else{
-        fp = fopen("../lab_results/pkt_send_mul_auto_sta/throughput.csv", "a+");
+        fp = fopen("../lab_results/pkt_send_mul_auto_sta2/throughput.csv", "a+");
     }
     for(i = 0; i < MAX_LCORES; i++){
         total_tx_pkt_num += tx_pkt_num[i];
@@ -597,11 +597,11 @@ int main(int argc, char *argv[])
  
     double to_print;
 
-    if (unlikely(access("../lab_results/pkt_send_mul_auto_sta/throughput_pps.csv", 0) != 0)){
-        fp = fopen("../lab_results/pkt_send_mul_auto_sta/throughput_pps.csv", "a+");
+    if (unlikely(access("../lab_results/pkt_send_mul_auto_sta2/throughput_pps.csv", 0) != 0)){
+        fp = fopen("../lab_results/pkt_send_mul_auto_sta2/throughput_pps.csv", "a+");
         fprintf(fp, "core,timestamp,flow_num,pkt_len,time,send_pps\r\n");
     }else{
-        fp = fopen("../lab_results/pkt_send_mul_auto_sta/throughput_pps.csv", "a+");
+        fp = fopen("../lab_results/pkt_send_mul_auto_sta2/throughput_pps.csv", "a+");
     }
     for (i = 0;i<MAX_RECORD_COUNT;i++){
         to_print = 0;
@@ -612,11 +612,11 @@ int main(int argc, char *argv[])
     }
     fclose(fp);
 
-    if (unlikely(access("../lab_results/pkt_send_mul_auto_sta/throughput_bps.csv", 0) != 0)){
-        fp = fopen("../lab_results/pkt_send_mul_auto_sta/throughput_bps.csv", "a+");
+    if (unlikely(access("../lab_results/pkt_send_mul_auto_sta2/throughput_bps.csv", 0) != 0)){
+        fp = fopen("../lab_results/pkt_send_mul_auto_sta2/throughput_bps.csv", "a+");
         fprintf(fp, "core,timestamp,flow_num,pkt_len,time,send_bps\r\n");
     }else{
-        fp = fopen("../lab_results/pkt_send_mul_auto_sta/throughput_bps.csv", "a+");
+        fp = fopen("../lab_results/pkt_send_mul_auto_sta2/throughput_bps.csv", "a+");
     }
     for (i = 0;i<MAX_RECORD_COUNT;i++){
         to_print = 0;
