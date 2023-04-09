@@ -6,6 +6,7 @@ flow_num=$5
 pkt_len=$6
 test_time=$7 #run_time = test_time * 0.5s
 run_path=$8
+host_name=$9
 echo run ${file_name} app, from ${src_nic_name} to ${dst_ip}
 
 src_mac=`ifconfig ${src_nic_name}|grep ether|awk '{print $2}'`
@@ -29,7 +30,14 @@ echo src_mac:${src_mac},src_pci:${src_pci}
 echo dst_mac:${dst_mac}
 echo -e '\n'
 
-export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig/ #149
+if [[ ${host_name} == "149" ]]
+then
+    export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig/ #149
+elif [[${host_name} == "150" ]]
+then
+    export PKG_CONFIG_PATH=/usr/local/lib/x86_64-linux-gnu/pkgconfig/ #150
+fi
+
 cd $run_path/$file_name/
 
 if [[ ! -d "../lab_results/${file_name}" ]]
