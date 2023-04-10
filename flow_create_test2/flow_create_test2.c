@@ -155,7 +155,7 @@ static void lcore_main(uint32_t lcore_id){
 		fprintf(fp,"%d,%lf\r\n",i+1, time_list[i]);
 	}
 	fclose(fp);
-	rte_exit(EXIT_FAILURE, "error in creating flow");
+	printf("finish file writing\n");
 }
 
 static int
