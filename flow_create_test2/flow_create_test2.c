@@ -135,7 +135,7 @@ static void lcore_main(uint32_t lcore_id){
 			printf("Flow can't be created %d message: %s\n",
 			       error.type,
 			       error.message ? error.message : "(no stated reason)");
-			rte_exit(EXIT_FAILURE, "error in creating flow");
+			break;
 		}
 		else{
 			printf("already add %d flows, add time is %lf\n", i+1, add_time);
@@ -155,6 +155,7 @@ static void lcore_main(uint32_t lcore_id){
 		fprintf(fp,"%d,%lf\r\n",i+1, time_list[i]);
 	}
 	fclose(fp);
+	rte_exit(EXIT_FAILURE, "error in creating flow");
 }
 
 static int
