@@ -1,5 +1,7 @@
 #include <arpa/inet.h>
 
+#define PKT_LEN 64
+
 struct rte_mbuf *make_testpkt(struct rte_mempool *pktmbuf_pool);
 
 static uint32_t reversebytes_uint32t(uint32_t value){

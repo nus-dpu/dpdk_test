@@ -48,7 +48,6 @@
 
 #define FLOW_NUM 100000
 #define BURST_SIZE 32
-#define PKT_LEN 1500
 
 struct lcore_configuration {
     uint32_t vid; // virtual core id
@@ -118,10 +117,12 @@ static void lcore_main(uint32_t lcore_id){
 	/* Create flow for send packet with. 8< */    
 	int i;
 	for(i = 0 ; i < FLOW_NUM; i++){
+		uint64_t start = rte_rdtsc();
 		flow = generate_ipv4_udp_flow(port_id, SRC_IP, FULL_MASK, 
 		                                       DEST_IP_PREFIX + i, FULL_MASK, 
 											   1234, 5678,
 											   &error);
+		double add_time=(double)(rte_rdtsc() - start) / rte_get_timer_hz();
 		if (!flow) {
 			printf("Flow can't be created %d message: %s\n",
 			       error.type,
@@ -129,7 +130,7 @@ static void lcore_main(uint32_t lcore_id){
 			rte_exit(EXIT_FAILURE, "error in creating flow");
 		}
 		else{
-			printf("already add %d flows\n", i+1);
+			printf("already add %d flows, add time is %lf\n", i+1, add_time);
 		}
 	}
 }
@@ -198,7 +199,7 @@ init_port(uint32_t *n_lcores_p)
 
 	ret = rte_eth_dev_info_get(port_id, &dev_info);
 	if (ret != 0){
-		rte_uexit(EXIT_FAILURE,
+		rte_exit(EXIT_FAILURE,
 			"Error during getting device (port %u) info: %s\n",
 			port_id, strerror(-ret));
 	}
@@ -275,7 +276,7 @@ init_port(uint32_t *n_lcores_p)
 
 	ret = rte_eth_dev_adjust_nb_rx_tx_desc(port_id, &nb_rxd, &nb_txd);
 	if (ret != 0)
-		return ret;
+		rte_exit(EXIT_FAILURE,"error code: err=%d", ret);
 	
 	/* Allocate and set up 1 RX queue per Ethernet port. */
 	for (i = 0; i < rx_rings; i++) {
