@@ -16,6 +16,7 @@
 #include <getopt.h>
 #include <signal.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 #include <rte_eal.h>
 #include <rte_common.h>
@@ -113,6 +114,12 @@ packet_send_main_loop(void)
 
 static void lcore_main(uint32_t lcore_id){
 	struct rte_flow_error error;
+	FILE *fp;
+	double *time_list = NULL;
+	time_list = (double *)malloc(sizeof(double)*FLOW_NUM);
+	if (time_list == NULL){
+		printf("memory for time_list allocate fail\n");
+	}
 	
 	/* Create flow for send packet with. 8< */    
 	int i;
@@ -123,6 +130,7 @@ static void lcore_main(uint32_t lcore_id){
 											   1234, 5678,
 											   &error);
 		double add_time=(double)(rte_rdtsc() - start) / rte_get_timer_hz();
+		time_list[i] = add_time;
 		if (!flow) {
 			printf("Flow can't be created %d message: %s\n",
 			       error.type,
@@ -133,6 +141,20 @@ static void lcore_main(uint32_t lcore_id){
 			printf("already add %d flows, add time is %lf\n", i+1, add_time);
 		}
 	}
+
+	if (unlikely(access("../lab_results/flow_create_test2/run_time.csv", 0) != 0)){
+        fp = fopen("../lab_results/flow_create_test2/run_time.csv", "a+");
+        fprintf(fp, "index,run_time\r\n");
+    }else{
+        fp = fopen("../lab_results/flow_create_test2/run_time.csv", "a+");
+    }
+	if( fp == NULL ){
+		printf("failed to open the file\n");
+	}
+	for(i = 0 ; i < FLOW_NUM; i++){
+		fprintf(fp,"%d,%lf\r\n",i+1, time_list[i]);
+	}
+	fclose(fp);
 }
 
 static int
