@@ -33,7 +33,7 @@ echo -e '\n'
 if [[ ${host_name} == "149" ]]
 then
     export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig/ #149
-elif [[${host_name} == "150" ]]
+elif [[ ${host_name} == "150" ]]
 then
     export PKG_CONFIG_PATH=/usr/local/lib/x86_64-linux-gnu/pkgconfig/ #150
 fi
