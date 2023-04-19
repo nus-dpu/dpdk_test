@@ -20,6 +20,8 @@
 #include <unistd.h> //For sleep()
 #include <math.h> //For pow()
 
+#include "para.h"
+
 #define APP_ETHER_TYPE  0x2222
 #define APP_MAGIC       0x3333
 
@@ -39,9 +41,6 @@
 // #define PRN_COLOR(str) ("\033[0;33m" str "\033[0m")	// Yellow accent
 
 #define DEST_IP_PREFIX ((192<<24)) /* dest ip prefix = 192.0.0.0.0 */
-
-#define FLOW_NUM 100
-#define PKT_LEN 64
 
 #define ZIPF_A 1.25
 #define ZIPF_C 1.0
