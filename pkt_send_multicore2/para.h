@@ -1,0 +1,3 @@
+#define FLOW_NUM 100
+#define PKT_LEN 64
+#define FLOW_SIZE 1000000000
