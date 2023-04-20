@@ -537,6 +537,7 @@ int main(int argc, char *argv[])
     unsigned lcore_id;
     uint32_t n_lcores = 0;
     int i,j;
+    struct timeval timetag;
 
     /* Initialize the Environment Abstraction Layer (EAL). */
     int ret = rte_eal_init(argc, argv);
@@ -565,6 +566,7 @@ int main(int argc, char *argv[])
     
     printf("core_num:%d\n",n_lcores);
 
+    gettimeofday(&timetag, NULL);
     rte_eal_mp_remote_launch((lcore_function_t *)launch_one_lcore, NULL, CALL_MAIN);
     RTE_LCORE_FOREACH_WORKER(lcore_id){
         if (rte_eal_wait_lcore(lcore_id) < 0) {
@@ -576,9 +578,7 @@ int main(int argc, char *argv[])
     uint64_t total_tx_pkt_num = 0, total_rx_pkt_num = 0;
     double total_tx_pps = 0.0, total_tx_bps = 0.0;
     FILE *fp;
-    struct timeval timetag;
 
-    gettimeofday(&timetag, NULL);
     if (unlikely(access("../lab_results/pkt_send_mul_auto_sta2/throughput.csv", 0) != 0)){
         fp = fopen("../lab_results/pkt_send_mul_auto_sta2/throughput.csv", "a+");
         fprintf(fp, "core,timestamp,flow_num,pkt_len,send_pkts,rcv_pkts,send_pps,send_bps,rcv_pps,rcv_bps\r\n");
