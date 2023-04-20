@@ -1,6 +1,7 @@
-file=pkt_send_mul_auto_sta2
+file=pkt_send_mul_auto_sta3
 remotefile=pkt_rcv_mul_auto_sta
-run_path="/home/qyn/software/FastNIC"
+lab=lab_closeloop
+run_path="/home/qyn/software/$lab/FastNIC/"
 
 rm ./lab_results/log/remote.out
 rm ./lab_results/log/cx4.out

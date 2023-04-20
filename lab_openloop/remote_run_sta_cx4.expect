@@ -5,7 +5,7 @@ set run_path [lindex $argv 1]
 set user [lindex $argv 2]
 set password [lindex $argv 3]
 set file_name [lindex $argv 4] 
-set rcv_nic [lindex $argv 5] 
+set send_nic [lindex $argv 5] 
 set ip 10.15.198.149
 spawn ssh $user@$ip
 
@@ -13,7 +13,7 @@ expect "qyn@bf2"
 send "cd $run_path\r" 
 
 expect "qyn@bf2" 
-send "./start_sta.sh $file_name $rcv_nic '192.168.200.2' 18-35 -1 -1 $test_time $run_path 149\r"
+send "./start_sta.sh $file_name $send_nic '192.168.200.2' 18-35 -1 -1 -1 $test_time $run_path 149\r"
 expect {
     "*password*" { send "$password\r" }
 }

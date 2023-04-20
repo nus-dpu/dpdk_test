@@ -4,9 +4,10 @@ dst_ip=$3
 core_id=$4
 flow_num=$5
 pkt_len=$6
-test_time=$7 #run_time = test_time * 0.5s
-run_path=$8
-host_name=$9
+flow_size=$7
+test_time=$8 #run_time = test_time * 0.5s
+run_path=$9
+host_name=$10
 echo run ${file_name} app, from ${src_nic_name} to ${dst_ip}
 
 src_mac=`ifconfig ${src_nic_name}|grep ether|awk '{print $2}'`
@@ -51,6 +52,15 @@ then
     sed -i "s/#define FLOW_NUM.*$/#define FLOW_NUM ${flow_num}/" para.h
     sed -i "s/#define PKT_LEN.*$/#define PKT_LEN ${pkt_len}/" para.h
     sed -i "s/#define MAX_RECORD_COUNT.*$/#define MAX_RECORD_COUNT ${test_time}/" para.h
+    make clean
+    make
+    sudo ./build/$file_name -l ${core_id} -a ${src_pci} -- --srcmac ${src_mac} --dstmac ${dst_mac} 
+elif [[ ${file_name} == "pkt_send_mul_auto_sta2" ]]
+then
+    sed -i "s/#define FLOW_NUM.*$/#define FLOW_NUM ${flow_num}/" para.h
+    sed -i "s/#define PKT_LEN.*$/#define PKT_LEN ${pkt_len}/" para.h
+    sed -i "s/#define MAX_RECORD_COUNT.*$/#define MAX_RECORD_COUNT ${test_time}/" para.h
+    sed -i "s/#define FLOW_SIZE.*$/#define FLOW_SIZE ${flow_size}/" para.h
     make clean
     make
     sudo ./build/$file_name -l ${core_id} -a ${src_pci} -- --srcmac ${src_mac} --dstmac ${dst_mac} 

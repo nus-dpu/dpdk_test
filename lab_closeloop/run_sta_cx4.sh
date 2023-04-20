@@ -2,6 +2,7 @@ test_time_rcv=120
 test_time_send=100
 file=pkt_send_mul_auto_sta3
 remotefile=pkt_rcv_mul_auto_sta
+lab=lab_closeloop
 # src_nic=ens3np0 #cx5
 src_nic=ens1np0 #cx4
 # src_nic=enp175s0 #cx5
@@ -13,7 +14,7 @@ then
     password="123456"
 elif [[ ${user} == "qyn" ]]
 then
-    run_path="/home/qyn/software/FastNIC/lab_openloop"
+    run_path="/home/qyn/software/FastNIC/$lab"
     password="nesc77qq"
 fi
 
