@@ -66,16 +66,6 @@ struct payload {
     uint64_t timestamp;
 };
 
-struct flow_table {
-    in_addr_t src_ip;
-    in_addr_t dst_ip;
-    uint16_t src_port;
-    uint16_t dst_port;
-    uint8_t proto_type;
-    uint32_t flow_size;
-    uint32_t pkt_seq;
-};
-
 struct flow_log {
     double *tx_pps_timeline;
     double *tx_bps_timeline;
@@ -101,151 +91,6 @@ double rx_pps[MAX_LCORES];
 double tx_bps[MAX_LCORES];
 double rx_bps[MAX_LCORES];
 
-void zipf_generate(double *zipf_cumuP){
-    double sum = 0.0;
-    int i;
-
-    for (i = 0; i < FLOW_NUM; i++){         
-        sum += ZIPF_C/pow((double)(i+2), ZIPF_A);
-    }
-    for (i = 0; i < FLOW_NUM; i++){ 
-        double zipf_temp = ZIPF_C/pow((double)(i+2), ZIPF_A);
-        if (i == 0)
-            zipf_cumuP[i] = zipf_temp/sum;
-        else
-            zipf_cumuP[i] = zipf_cumuP[i-1] + zipf_temp/sum;
-    }
-}
-
-void flow_table_init(struct flow_table* flowtable){
-    int i;
-    in_addr_t dst_ip = inet_addr("192.168.200.1");
-    for(i = 0; i < FLOW_NUM; i++) {
-        flowtable[i].src_ip = DEST_IP_PREFIX + i;
-        flowtable[i].dst_ip = dst_ip;
-        flowtable[i].src_port = 0x162E;
-        flowtable[i].dst_port = 0x1503;
-        flowtable[i].proto_type = 17;
-        flowtable[i].flow_size = FLOW_SIZE;
-        flowtable[i].pkt_seq = 0;
-    }
-}
-
-int zipf_pick(const double *zipf_cumuP){
-    unsigned int seed = rte_rdtsc();
-    int index = 0;
-    double data = (double)rand_r(&seed)/RAND_MAX;  //生成一个0~1的数
-    while (data > zipf_cumuP[index])   //找索引,直到找到一个比他小的值,那么对应的index就是随机数了
-        index++;
-    return index;
-}
-
-uint32_t reversebytes_uint32t(uint32_t value){
-    return (value & 0x000000FFU) << 24 | (value & 0x0000FF00U) << 8 | 
-        (value & 0x00FF0000U) >> 8 | (value & 0xFF000000U) >> 24; 
-}
-
-static inline void
-fill_ethernet_header(struct rte_ether_hdr *eth_hdr) {
-	struct rte_ether_addr s_addr = src_mac; 
-	struct rte_ether_addr d_addr = dst_mac;
-	eth_hdr->src_addr =s_addr;
-	eth_hdr->dst_addr =d_addr;
-	eth_hdr->ether_type = rte_cpu_to_be_16(0x0800);
-}
-
-static inline void
-fill_ipv4_header(struct rte_ipv4_hdr *ipv4_hdr, const struct flow_table *flow) {
-	ipv4_hdr->version_ihl = (4 << 4) + 5; // ipv4, length 5 (*4)
-	ipv4_hdr->type_of_service = 0; // No Diffserv
-	ipv4_hdr->total_length = rte_cpu_to_be_16(PKT_LEN); // tcp 20
-	ipv4_hdr->packet_id = rte_cpu_to_be_16(5462); // set random
-	ipv4_hdr->fragment_offset = rte_cpu_to_be_16(0);
-	ipv4_hdr->time_to_live = 64;
-	ipv4_hdr->next_proto_id = 17; // udp
-	ipv4_hdr->hdr_checksum = rte_cpu_to_be_16(0x0);
-
-    ipv4_hdr->src_addr = rte_cpu_to_be_32(flow->src_ip); 
-	ipv4_hdr->dst_addr = rte_cpu_to_be_32(flow->dst_ip);
-
-	ipv4_hdr->hdr_checksum = rte_cpu_to_be_16(rte_ipv4_cksum(ipv4_hdr));
-}
-
-static inline void
-fill_udp_header(struct rte_udp_hdr *udp_hdr, struct rte_ipv4_hdr *ipv4_hdr, const struct flow_table *flow) {
-    uint16_t src_port = flow->src_port;
-    uint16_t dst_port = flow->dst_port;
-    
-    udp_hdr->src_port = rte_cpu_to_be_16(src_port);
-	udp_hdr->dst_port = rte_cpu_to_be_16(dst_port);
-	udp_hdr->dgram_len = rte_cpu_to_be_16(PKT_LEN - sizeof(struct rte_ipv4_hdr));
-    udp_hdr->dgram_cksum = rte_cpu_to_be_16(0x0);
-	
-	udp_hdr->dgram_cksum = rte_cpu_to_be_16(rte_ipv4_udptcp_cksum(ipv4_hdr, udp_hdr));
-}
-
-static inline void
-fill_tcp_header(struct rte_tcp_hdr *tcp_hdr, struct rte_ipv4_hdr *ipv4_hdr) {
-	tcp_hdr->src_port = rte_cpu_to_be_16(0x162E);
-	tcp_hdr->dst_port = rte_cpu_to_be_16(0x04d2);
-	tcp_hdr->sent_seq = rte_cpu_to_be_32(0);
-	tcp_hdr->recv_ack = rte_cpu_to_be_32(0);
-	tcp_hdr->data_off = 0;
-	tcp_hdr->tcp_flags = 0;
-	tcp_hdr->rx_win = rte_cpu_to_be_16(16);
-	tcp_hdr->cksum = rte_cpu_to_be_16(0x0);
-	tcp_hdr->tcp_urp = rte_cpu_to_be_16(0);
-
-	tcp_hdr->cksum = rte_cpu_to_be_16(rte_ipv4_udptcp_cksum(ipv4_hdr, tcp_hdr));
-}
-
-static inline void
-fill_payload(struct payload *payload_data, struct flow_table *flow) {
-    payload_data->flow_size = flow->flow_size;
-    payload_data->pkt_seq = flow->pkt_seq;
-    payload_data->timestamp = 0; //shoule change later
-    flow->pkt_seq++;
-}
-
-static struct rte_mbuf *make_testpkt(uint32_t queue_id, struct flow_table *flow)
-{
-    
-    struct rte_mbuf *mp = rte_pktmbuf_alloc(pktmbuf_pool[queue_id]);
-
-    uint16_t pkt_len = PKT_LEN+sizeof(struct rte_ether_hdr);
-    char *buf = rte_pktmbuf_append(mp, pkt_len);
-    if (unlikely(buf == NULL)) {
-        APP_LOG("Error: failed to allocate packet buffer.\n");
-        rte_pktmbuf_free(mp);
-        return NULL;
-    }
-
-    mp->data_len = pkt_len;
-    mp->pkt_len = pkt_len;
-    uint16_t curr_ofs = 0;
-
-    struct rte_ether_hdr *ether_h = rte_pktmbuf_mtod_offset(mp, struct rte_ether_hdr *, curr_ofs);
-	fill_ethernet_header(ether_h);
-    curr_ofs += sizeof(struct rte_ether_hdr);
-
-    struct rte_ipv4_hdr *ipv4_h = rte_pktmbuf_mtod_offset(mp, struct rte_ipv4_hdr *, curr_ofs);
-	fill_ipv4_header(ipv4_h, flow);
-    curr_ofs += sizeof(struct rte_ipv4_hdr);
-
-    // struct rte_tcp_hdr *tcp_h = rte_pktmbuf_mtod_offset(mp, struct rte_tcp_hdr *, curr_ofs);
-	// fill_tcp_header(tcp_h, ipv4_h);
-    // curr_ofs += sizeof(struct rte_tcp_hdr);
-
-    struct rte_udp_hdr *udp_h = rte_pktmbuf_mtod_offset(mp, struct rte_udp_hdr *, curr_ofs);
-	fill_udp_header(udp_h, ipv4_h,flow);
-    curr_ofs += sizeof(struct rte_udp_hdr);
-    
-    struct payload * payload_data= rte_pktmbuf_mtod_offset(mp, struct payload *, curr_ofs);
-    fill_payload(payload_data, flow);
-
-    return mp;
-}
-
 /*
  * The lcore main. This is the main thread that does the work, reading from
  * an input port and writing to an output port.
@@ -261,21 +106,8 @@ static void lcore_main(uint32_t lcore_id, struct flow_log *flowlog)
 
     /* Run until the application is quit or killed. */
     struct lcore_configuration *lconf = &lcore_conf[lcore_id];
-    struct rte_mbuf *bufs_rx[BURST_SIZE], *bufs_tx[BURST_SIZE];
-    
-    struct flow_table *flowtable = (struct flow_table *) malloc(sizeof(struct flow_table) * FLOW_NUM);
-    if(flowtable == NULL){
-        rte_exit(EXIT_FAILURE, "Cannot alloc memory for pf in %u\n", lcore_id);
-    }
-    flow_table_init(flowtable);
+    struct rte_mbuf *bufs[BURST_SIZE];
 
-    // double* pf = (double*)malloc(sizeof(double) * FLOW_NUM);
-    // if(pf == NULL){
-    //     rte_exit(EXIT_FAILURE, "Cannot alloc memory for pf in %u\n", lcore_id);
-    // }
-    // zipf_generate(pf);
-
-    uint64_t pkt_makenum = 0;
     uint64_t loop_count = 0;
     uint64_t record_count = 0;
     /* pkts_sta */
@@ -290,23 +122,22 @@ static void lcore_main(uint32_t lcore_id, struct flow_log *flowlog)
     while (!force_quit && record_count < MAX_RECORD_COUNT) {
         int i;
         for (i = 0; i < lconf->n_rx_queue; i++){
-            int j;
-            for(j = 0; j < BURST_SIZE; j++){
-                bufs_tx[j] = make_testpkt(lconf->rx_queue_list[i], &flowtable[pkt_makenum % FLOW_NUM]);
-                pkt_makenum++;
-            }
+            // Receive packets
+            const uint16_t nb_rx = rte_eth_rx_burst(lconf->port, lconf->rx_queue_list[i], bufs, BURST_SIZE);
+            total_rx += nb_rx;        
+            if (unlikely(nb_rx == 0)){
+                continue;
+            }     
 
-            // Transmit packet
-            uint16_t nb_tx = rte_eth_tx_burst(lconf->port, lconf->rx_queue_list[i], bufs_tx, BURST_SIZE);
+            // Transmit any packets which was received
+            const uint16_t nb_tx = rte_eth_tx_burst(lconf->port, lconf->rx_queue_list[i], bufs, nb_rx);
             total_tx += nb_tx;
-            if (nb_tx < BURST_SIZE){
-                rte_pktmbuf_free_bulk(bufs_tx, BURST_SIZE - nb_tx);
-            }
-            //Receive packets
-            const uint16_t nb_rx = rte_eth_rx_burst(lconf->port, lconf->rx_queue_list[i], bufs_rx, BURST_SIZE);
-            total_rx += nb_rx;
-            if (nb_rx > 0){
-                rte_pktmbuf_free_bulk(bufs_rx, nb_rx);
+
+            /* Free any unsent packets. */
+            if (unlikely(nb_tx < nb_rx)) {
+                uint16_t buf;
+                for (buf = nb_tx; buf < nb_rx; buf++)
+                    rte_pktmbuf_free(bufs[buf]);
             }
         }
         loop_count++;
@@ -332,10 +163,6 @@ static void lcore_main(uint32_t lcore_id, struct flow_log *flowlog)
             flowlog->rx_bps_timeline[lcore_id * MAX_RECORD_COUNT + record_count] = (double)drxB*8 / time_inter_temp;
 
             record_count++;
-        }
-
-        if (pkt_makenum % FLOW_NUM >= FLOW_SIZE){
-            break;
         }
     }
     double time_interval = (double)(rte_rdtsc() - start)/rte_get_timer_hz();
