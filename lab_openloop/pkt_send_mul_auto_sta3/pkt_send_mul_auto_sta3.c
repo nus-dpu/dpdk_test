@@ -46,6 +46,10 @@
 #define ZIPF_A 1.25
 #define ZIPF_C 1.0
 
+#define PROGRAM "pkt_send_mul_auto_sta3"
+#define THROUGHPUT_FILE "../lab_results/" PROGRAM "/throughput.csv"
+#define THROUGHPUT_TIME_FILE   "../lab_results/" PROGRAM "/throughput_time.csv"
+
 struct lcore_configuration {
     uint32_t vid; // virtual core id
     uint32_t port; // one port
@@ -609,11 +613,11 @@ int main(int argc, char *argv[])
     struct timeval timetag;
 
     gettimeofday(&timetag, NULL);
-    if (unlikely(access("../lab_results/pkt_send_mul_auto_sta2/throughput.csv", 0) != 0)){
-        fp = fopen("../lab_results/pkt_send_mul_auto_sta2/throughput.csv", "a+");
+    if (unlikely(access(THROUGHPUT_FILE, 0) != 0)){
+        fp = fopen(THROUGHPUT_FILE, "a+");
         fprintf(fp, "core,timestamp,flow_num,pkt_len,send_pkts,rcv_pkts,send_pps,send_bps,rcv_pps,rcv_bps\r\n");
     }else{
-        fp = fopen("../lab_results/pkt_send_mul_auto_sta2/throughput.csv", "a+");
+        fp = fopen(THROUGHPUT_FILE, "a+");
     }
     for(i = 0; i < MAX_LCORES; i++){
         total_tx_pkt_num += tx_pkt_num[i];
@@ -625,35 +629,20 @@ int main(int argc, char *argv[])
     fclose(fp);
     APP_LOG("Total Sent %ld pkts, received %ld pkts, throughput: %lf pps, %lf bps.\n", total_tx_pkt_num, total_rx_pkt_num, total_tx_pps, total_tx_bps);
  
-    double to_print;
-
-    if (unlikely(access("../lab_results/pkt_send_mul_auto_sta2/throughput_pps.csv", 0) != 0)){
-        fp = fopen("../lab_results/pkt_send_mul_auto_sta2/throughput_pps.csv", "a+");
-        fprintf(fp, "core,timestamp,flow_num,pkt_len,time,send_pps\r\n");
+    if (unlikely(access(THROUGHPUT_TIME_FILE, 0) != 0)){
+        fp = fopen(THROUGHPUT_TIME_FILE, "a+");
+        fprintf(fp, "core,timestamp,flow_num,pkt_len,time,send_pps,send_bps\r\n");
     }else{
-        fp = fopen("../lab_results/pkt_send_mul_auto_sta2/throughput_pps.csv", "a+");
+        fp = fopen(THROUGHPUT_TIME_FILE, "a+");
     }
     for (i = 0;i<MAX_RECORD_COUNT;i++){
-        to_print = 0;
+        double tx_pps = 0, tx_bps = 0;
         for (j = 0;j<MAX_LCORES;j++){
-            to_print += tx_pps_timeline[j][i];
+            tx_pps += tx_pps_timeline[j][i];
+            tx_bps += tx_bps_timeline[j][i];
         }
-        fprintf(fp, "%d,%ld,%d,%d,%d,%lf\r\n", n_lcores, timetag.tv_sec, FLOW_NUM, PKT_LEN, i, to_print);
-    }
-    fclose(fp);
-
-    if (unlikely(access("../lab_results/pkt_send_mul_auto_sta2/throughput_bps.csv", 0) != 0)){
-        fp = fopen("../lab_results/pkt_send_mul_auto_sta2/throughput_bps.csv", "a+");
-        fprintf(fp, "core,timestamp,flow_num,pkt_len,time,send_bps\r\n");
-    }else{
-        fp = fopen("../lab_results/pkt_send_mul_auto_sta2/throughput_bps.csv", "a+");
-    }
-    for (i = 0;i<MAX_RECORD_COUNT;i++){
-        to_print = 0;
-        for (j = 0;j<MAX_LCORES;j++){
-            to_print += tx_bps_timeline[j][i];
-        }
-        fprintf(fp, "%d,%ld,%d,%d,%d,%lf\r\n", n_lcores, timetag.tv_sec, FLOW_NUM, PKT_LEN, i, to_print);
+        fprintf(fp, "%d,%ld,%d,%d,%d,%lf,%lf\r\n", \
+                n_lcores, timetag.tv_sec, FLOW_NUM, PKT_LEN, i, tx_pps, tx_bps);
     }
     fclose(fp);
 
