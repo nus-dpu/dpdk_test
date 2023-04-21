@@ -46,7 +46,6 @@
 #define ZIPF_A 1.25
 #define ZIPF_C 1.0
 
-#define PROGRAM "pkt_send_mul_auto_sta3"
 #define THROUGHPUT_FILE "../lab_results/" PROGRAM "/throughput.csv"
 #define THROUGHPUT_TIME_FILE   "../lab_results/" PROGRAM "/throughput_time.csv"
 
@@ -73,6 +72,13 @@ struct flow_table {
     uint8_t proto_type;
     uint32_t flow_size;
     uint32_t pkt_seq;
+};
+
+struct flow_log {
+    double *tx_pps_timeline;
+    double *tx_bps_timeline;
+    double *rx_pps_timeline;
+    double *rx_bps_timeline;
 };
 
 struct rte_ether_addr src_mac;
@@ -247,7 +253,7 @@ static struct rte_mbuf *make_testpkt(uint32_t queue_id, struct flow_table *flow)
  * The lcore main. This is the main thread that does the work, reading from
  * an input port and writing to an output port.
  */
-static void lcore_main(uint32_t lcore_id)
+static void lcore_main(uint32_t lcore_id, struct flow_log *flowlog)
 {
     // Check that the port is on the same NUMA node.
     if (rte_eth_dev_socket_id(enabled_port) > 0 &&
@@ -257,12 +263,8 @@ static void lcore_main(uint32_t lcore_id)
     fflush(stdout);
 
     /* Run until the application is quit or killed. */
-    uint16_t tx_count = 0;
     struct lcore_configuration *lconf = &lcore_conf[lcore_id];
     struct rte_mbuf *bufs[BURST_SIZE], *bufs_tx[BURST_SIZE];
-    uint64_t last_tx_tsc = 0;
-    uint64_t perf_runtime_tsc = rte_rdtsc();	// Save starting time first
-    uint64_t loop_count = 0, total_tx = 0, total_rx = 0;
     
     struct flow_table *flowtable = (struct flow_table *) malloc(sizeof(struct flow_table) * FLOW_NUM);
     if(flowtable == NULL){
@@ -276,75 +278,77 @@ static void lcore_main(uint32_t lcore_id)
     // }
     // zipf_generate(pf);
     
-    uint64_t start = rte_rdtsc();
-    uint64_t length = 0;
-    uint64_t time_last_print = start;
-    uint64_t last_total_tx = total_tx;
-    uint64_t last_length = length;
-    uint64_t dtx;
-    uint64_t dlength;
+    uint64_t pkt_makenum = 0;
+    uint64_t loop_count = 0;
     uint64_t record_count = 0;
-    uint64_t time_temp;
-    uint32_t ip_tag = 0;
-    uint64_t pkt_num = 0;
+    /* pkts_sta */
+    uint64_t total_tx = 0, total_rx = 0;
+    uint64_t total_txB = 0, total_rxB = 0;
+    uint64_t last_total_tx = 0, last_total_rx = 0;
+    uint64_t last_total_txB = 0, last_total_rxB = 0;
+    // uint64_t total_txb = 0, total_rxb = 0; //we send same length packets now, can be ignored
+    /* time_sta */
+    uint64_t start = rte_rdtsc();
+    uint64_t time_last_print = start;
+    uint64_t time_now;
 
-    while (!force_quit/* && loop_count < 1000*/ && record_count < MAX_RECORD_COUNT) {
+    while (!force_quit && record_count < MAX_RECORD_COUNT) {
         int i;
         for (i = 0; i < lconf->n_rx_queue; i++){
             int j;
             for(j = 0; j < BURST_SIZE; j++){
-                bufs_tx[j] = make_testpkt(lconf->rx_queue_list[i], &flowtable[pkt_num % FLOW_NUM]);
-                pkt_num++;
-                ip_tag++;
-                if (ip_tag >= FLOW_NUM) {
-                    ip_tag=0;
-                }
+                bufs_tx[j] = make_testpkt(lconf->rx_queue_list[i], &flowtable[pkt_makenum % FLOW_NUM]);
+                pkt_makenum++;
             }
             // Transmit packet
             uint16_t nb_tx = rte_eth_tx_burst(lconf->port, lconf->rx_queue_list[i], bufs_tx, BURST_SIZE);
             total_tx += nb_tx;
-            length += (bufs_tx[0]->data_len*nb_tx);
+            total_txB += (bufs_tx[0]->data_len*nb_tx);
             if (nb_tx < BURST_SIZE){
                 rte_pktmbuf_free_bulk(bufs_tx, BURST_SIZE - nb_tx);
             }
         }
         loop_count++;
-        time_temp = rte_rdtsc();
-        double time_inter_temp=(double)(time_temp-time_last_print)/rte_get_timer_hz();
+
+        //save log
+        time_now = rte_rdtsc();
+        double time_inter_temp=(double)(time_now-time_last_print)/rte_get_timer_hz();
         if (time_inter_temp>=0.5){
-            time_last_print=time_temp;
+            uint64_t dtx;
+            uint64_t dtxB;
+
             dtx = total_tx - last_total_tx;
+            dtxB = total_rxB - last_total_txB;
+
+            time_last_print=time_now;
             last_total_tx = total_tx;
-            dlength = length - last_length;
-            last_length = length;
-            // APP_LOG("lcoreID %ld: run time: %lf.\n", lcore_id, (time_temp-(double)start)/rte_get_timer_hz());
-            // APP_LOG("lcoreID %ld: during this time, send %ld pkts, throughput: %lf pps, %lf bps.\n", lcore_id,dtx, (double)dtx/time_inter_temp, (double)dlength/time_inter_temp);
-            // APP_LOG("times of loop is %ld, should send packets %ld.\n", loop_count, loop_count);
-            tx_pps_timeline[lcore_id][record_count] = (double)dtx/time_inter_temp;
-            tx_bps_timeline[lcore_id][record_count] = (double)dlength*8/time_inter_temp;
-            // timeline[lcore_id][record_count] = (double)(time_temp-start)/rte_get_timer_hz();
+            last_total_txB = total_txB;
+            flowlog->rx_pps_timeline[lcore_id * MAX_RECORD_COUNT + record_count] = (double)dtx/time_inter_temp;
+            flowlog->rx_bps_timeline[lcore_id * MAX_RECORD_COUNT + record_count] = (double)dtxB*8/time_inter_temp;
+
             record_count++;
         }
 
-        if (pkt_num % FLOW_NUM >= FLOW_SIZE){
+        if (pkt_makenum % FLOW_NUM >= FLOW_SIZE){
             break;
         }
     }
     // uint64_t time_interval = rte_rdtsc() - start;
     double time_interval = (double)(rte_rdtsc() - start)/rte_get_timer_hz();
     APP_LOG("lcoreID %d: run time: %lf.\n", lcore_id, time_interval);
-    APP_LOG("lcoreID %d: Sent %ld pkts, received %ld pkts, throughput: %lf pps, %lf bps.\n", lcore_id, total_tx, total_rx, (double)total_tx/time_interval, (double)length*8/time_interval);
+    APP_LOG("lcoreID %d: Sent %ld pkts, received %ld pkts, throughput: %lf pps, %lf bps.\n", \
+            lcore_id, total_tx, total_rx, (double)total_tx/time_interval, (double)total_txB*8/time_interval);
     APP_LOG("lcoreID %d: times of loop is %ld, should send packets %ld.\n", lcore_id, loop_count, loop_count*BURST_SIZE);
     tx_pkt_num[lcore_id] = total_tx;
     rx_pkt_num[lcore_id] = total_rx;
     tx_pps[lcore_id] = (double)total_tx/time_interval;
-    tx_bps[lcore_id] = (double)length*8/time_interval;
+    tx_bps[lcore_id] = (double)total_txB*8/time_interval;
 }
 
 static int
 launch_one_lcore(__attribute__((unused)) void *arg){
     uint32_t lcore_id = rte_lcore_id();
-	lcore_main(lcore_id);
+	lcore_main(lcore_id, arg);
 	return 0;
 }
 
@@ -570,7 +574,9 @@ int main(int argc, char *argv[])
     unsigned nb_ports;
     unsigned lcore_id;
     uint32_t n_lcores = 0;
-    int i,j;
+    int i,j;    
+    struct timeval timetag;
+    struct flow_log flowlog;
 
     /* Initialize the Environment Abstraction Layer (EAL). */
     int ret = rte_eal_init(argc, argv);
@@ -599,6 +605,12 @@ int main(int argc, char *argv[])
     
     printf("core_num:%d\n",n_lcores);
 
+    flowlog.tx_pps_timeline = (double *)malloc(MAX_LCORES * MAX_RECORD_COUNT);
+    flowlog.tx_bps_timeline = (double *)malloc(MAX_LCORES * MAX_RECORD_COUNT);
+    flowlog.rx_pps_timeline = (double *)malloc(MAX_LCORES * MAX_RECORD_COUNT);
+    flowlog.rx_pps_timeline = (double *)malloc(MAX_LCORES * MAX_RECORD_COUNT);
+
+    gettimeofday(&timetag, NULL);
     rte_eal_mp_remote_launch((lcore_function_t *)launch_one_lcore, NULL, CALL_MAIN);
     RTE_LCORE_FOREACH_WORKER(lcore_id){
         if (rte_eal_wait_lcore(lcore_id) < 0) {
@@ -610,9 +622,7 @@ int main(int argc, char *argv[])
     uint64_t total_tx_pkt_num = 0, total_rx_pkt_num = 0;
     double total_tx_pps = 0.0, total_tx_bps = 0.0;
     FILE *fp;
-    struct timeval timetag;
 
-    gettimeofday(&timetag, NULL);
     if (unlikely(access(THROUGHPUT_FILE, 0) != 0)){
         fp = fopen(THROUGHPUT_FILE, "a+");
         fprintf(fp, "core,timestamp,flow_num,pkt_len,send_pkts,rcv_pkts,send_pps,send_bps,rcv_pps,rcv_bps\r\n");
@@ -631,18 +641,18 @@ int main(int argc, char *argv[])
  
     if (unlikely(access(THROUGHPUT_TIME_FILE, 0) != 0)){
         fp = fopen(THROUGHPUT_TIME_FILE, "a+");
-        fprintf(fp, "core,timestamp,flow_num,pkt_len,time,send_pps,send_bps\r\n");
+        fprintf(fp, "core,timestamp,flow_num,pkt_len,time,send_pps,send_bps,,rcv_pps,rcv_bps\r\n");
     }else{
         fp = fopen(THROUGHPUT_TIME_FILE, "a+");
     }
     for (i = 0;i<MAX_RECORD_COUNT;i++){
-        double tx_pps = 0, tx_bps = 0;
+        double tx_pps_p = 0, tx_bps_p = 0;
         for (j = 0;j<MAX_LCORES;j++){
-            tx_pps += tx_pps_timeline[j][i];
-            tx_bps += tx_bps_timeline[j][i];
+            tx_pps_p += flowlog.rx_pps_timeline[j * MAX_RECORD_COUNT + i];;
+            tx_bps_p += flowlog.rx_bps_timeline[j * MAX_RECORD_COUNT + i];
         }
-        fprintf(fp, "%d,%ld,%d,%d,%d,%lf,%lf\r\n", \
-                n_lcores, timetag.tv_sec, FLOW_NUM, PKT_LEN, i, tx_pps, tx_bps);
+        fprintf(fp, "%d,%ld,%d,%d,%d,%lf,%lf,0,0\r\n", \
+                n_lcores, timetag.tv_sec, FLOW_NUM, PKT_LEN, i, tx_pps_p, tx_bps_p);
     }
     fclose(fp);
 
