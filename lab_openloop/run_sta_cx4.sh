@@ -4,7 +4,7 @@ test_time_rcv=30
 test_time_send=10
 lab=lab_openloop
 file=pkt_send_mul_auto_sta3
-remotefile=pkt_rcv_mul_auto_sta
+remotefile=pkt_rcv_mul_auto_sta3
 line="bf2"
 # line="cx5"
 
@@ -31,23 +31,24 @@ do
     do
         nohup expect remote_run_sta_cx4.expect $test_time_rcv $run_path $user $password $remotefile $line >> ./lab_results/log/remote.out 2>&1 &
         sleep 8s
-        ./start_sta.sh $file $src_nic "192.168.200.1" $core_id $flow_num 64 $flow_size $test_time_send $run_path 150 #149,bf2tocx4
         echo ./start_sta.sh $file $line 150 $core_id $flow_num 64 $flow_size $test_time_send $run_path
-        # ./start_sta.sh pkt_send_mul_auto_sta3 bf2 150 0 1000 64 100000 10 /home/qyn/software/FastNIC/lab_openloop
+        ./start_sta.sh $file $line 150 $core_id $flow_num 64 $flow_size $test_time_send $run_path #149,bf2tocx4
+        # #./start_sta.sh pkt_send_mul_auto_sta3 bf2 150 0 1000 64 100000 10 /home/qyn/software/FastNIC/lab_openloop
         sleep 30s
 
-        # ((i++))
+        ((i++))
 
-        # mkdir ../lab_results/${file}/send_$i
-        # mv ../lab_results/${file}/*.csv ../lab_results/${file}/send_$i/*.csv
+        cd $run_path
+        mkdir ./lab_results/${file}/send_$i
+        mv ./lab_results/${file}/*.csv ./lab_results/${file}/send_$i/
         
-        # ssh qyn@10.15.198.149 "cd $run_path && mkdir ./lab_results/${remotefile}/rcv_$i"
-        # ssh qyn@10.15.198.149 "cd $run_path/lab_results/${remotefile}/ && mv *csv rcv_$i/"
+        ssh qyn@10.15.198.149 "cd $run_path && mkdir ./lab_results/${remotefile}/rcv_$i"
+        ssh qyn@10.15.198.149 "cd $run_path/lab_results/${remotefile}/ && mv *csv rcv_$i/"
        
-        # ovsfile_path="/home/ubuntu/software/FastNIC/lab_results/ovs_log"
-        # mkdir ../lab_results/ovs_log/log_$i
-        # scp ubuntu@10.15.198.148:$ovsfile_path/*.csv $run_path/lab_results/ovs_log/log_$i
-        # ssh ubuntu@10.15.198.148 "cd $ovsfile_path && rm -f ./*.csv"
+        ovsfile_path="/home/ubuntu/software/FastNIC/lab_results/ovs_log"
+        mkdir ./lab_results/ovslog/log_$i
+        scp ubuntu@10.15.198.148:$ovsfile_path/*.csv $run_path/lab_results/ovslog/log_$i
+        ssh ubuntu@10.15.198.148 "cd $ovsfile_path && rm -f ./*.csv"
     done
 done
 
