@@ -72,7 +72,7 @@ then
     make clean
     make
     sudo ./build/$file_name -l ${core_id} -a ${src_pci} -- --srcmac ${src_mac} --dstmac ${dst_mac} 
-elif [[ ${file_name} == "pkt_rcv_mul_auto_sta" ]]
+elif [[ ${file_name} == "pkt_rcv_mul_auto_sta" || ${file_name} == "pkt_rcv_mul_auto_sta3" ]]
 then
     sed -i "s/#define MAX_RECORD_COUNT.*$/#define MAX_RECORD_COUNT ${test_time}/" para.h
     make clean

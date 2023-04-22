@@ -102,7 +102,6 @@ static void lcore_main(uint32_t lcore_id, struct flow_log *flowlog)
         printf("WARNING, port %u is on remote NUMA node.\n", enabled_port);
     printf("Core %u forwarding packets. [Ctrl+C to quit]\n", rte_lcore_id());
     fflush(stdout);
-
     /* Run until the application is quit or killed. */
     struct lcore_configuration *lconf = &lcore_conf[lcore_id];
     struct rte_mbuf *bufs[BURST_SIZE];
@@ -370,10 +369,10 @@ int main(int argc, char *argv[])
     /* Call lcore_main on the main core only. */
     printf("core_num:%d\n",n_lcores);
 
-    flowlog.tx_pps_timeline = (double *)malloc(MAX_LCORES * MAX_RECORD_COUNT);
-    flowlog.tx_bps_timeline = (double *)malloc(MAX_LCORES * MAX_RECORD_COUNT);
-    flowlog.rx_pps_timeline = (double *)malloc(MAX_LCORES * MAX_RECORD_COUNT);
-    flowlog.rx_pps_timeline = (double *)malloc(MAX_LCORES * MAX_RECORD_COUNT);
+    flowlog.tx_pps_timeline = (double *)malloc(sizeof(double) * MAX_LCORES * MAX_RECORD_COUNT);
+    flowlog.tx_bps_timeline = (double *)malloc(sizeof(double) * MAX_LCORES * MAX_RECORD_COUNT);
+    flowlog.rx_pps_timeline = (double *)malloc(sizeof(double) * MAX_LCORES * MAX_RECORD_COUNT);
+    flowlog.rx_pps_timeline = (double *)malloc(sizeof(double) * MAX_LCORES * MAX_RECORD_COUNT);
 
     gettimeofday(&timetag, NULL);
     rte_eal_mp_remote_launch((lcore_function_t *)launch_one_lcore, &flowlog, CALL_MAIN);

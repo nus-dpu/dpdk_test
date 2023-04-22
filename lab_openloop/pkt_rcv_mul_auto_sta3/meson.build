@@ -8,5 +8,5 @@
 
 allow_experimental_apis = true
 sources = files(
-        'pkt_rcv_multicore_sta.c',
+        'pkt_rcv_mul_auto_sta3.c',
 )
