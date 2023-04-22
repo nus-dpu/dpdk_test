@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdlib.h>
 #include <stdarg.h>
 #include <ctype.h>
 #include <errno.h>
@@ -75,10 +76,10 @@ struct flow_table {
 };
 
 struct flow_log {
-    double *tx_pps_timeline;
-    double *tx_bps_timeline;
-    double *rx_pps_timeline;
-    double *rx_bps_timeline;
+    double tx_pps_t;
+    double tx_bps_t;
+    double rx_pps_t;
+    double rx_bps_t;
 };
 
 struct rte_ether_addr src_mac;
@@ -98,11 +99,7 @@ double tx_pps[MAX_LCORES];
 double rx_pps[MAX_LCORES];
 double tx_bps[MAX_LCORES];
 double rx_bps[MAX_LCORES];
-double tx_pps_timeline[MAX_LCORES][MAX_RECORD_COUNT];
-double tx_bps_timeline[MAX_LCORES][MAX_RECORD_COUNT];
-// double (*tx_pps_timeline)[128] = (double(*)[128])malloc(sizeof(double) * 72 * 128);
-// double (*tx_bps_timeline)[128] = (double(*)[128])malloc(sizeof(double) * 72 * 128);
-// double timeline[MAX_LCORES][30];
+struct flow_log *flowlog_timeline[MAX_LCORES];
 
 void zipf_generate(double *zipf_cumuP){
     double sum = 0.0;
@@ -292,6 +289,9 @@ static void lcore_main(uint32_t lcore_id, struct flow_log *flowlog)
     uint64_t time_last_print = start;
     uint64_t time_now;
 
+    flowlog_timeline[lcore_id] = (struct flow_log *) malloc(sizeof(struct flow_log) * MAX_RECORD_COUNT);
+    memset(flowlog_timeline[lcore_id], 0, sizeof(struct flow_log) * MAX_RECORD_COUNT);
+
     while (!force_quit && record_count < MAX_RECORD_COUNT) {
         int i;
         for (i = 0; i < lconf->n_rx_queue; i++){
@@ -318,13 +318,13 @@ static void lcore_main(uint32_t lcore_id, struct flow_log *flowlog)
             uint64_t dtxB;
 
             dtx = total_tx - last_total_tx;
-            dtxB = total_rxB - last_total_txB;
+            dtxB = total_txB - last_total_txB;
 
             time_last_print=time_now;
             last_total_tx = total_tx;
             last_total_txB = total_txB;
-            flowlog->rx_pps_timeline[lcore_id * MAX_RECORD_COUNT + record_count] = (double)dtx/time_inter_temp;
-            flowlog->rx_bps_timeline[lcore_id * MAX_RECORD_COUNT + record_count] = (double)dtxB*8/time_inter_temp;
+            flowlog_timeline[lcore_id][record_count].tx_pps_t = (double)dtx/time_inter_temp;
+            flowlog_timeline[lcore_id][record_count].tx_bps_t = (double)dtxB*8/time_inter_temp;
 
             record_count++;
         }
@@ -576,7 +576,6 @@ int main(int argc, char *argv[])
     uint32_t n_lcores = 0;
     int i,j;    
     struct timeval timetag;
-    struct flow_log flowlog;
 
     /* Initialize the Environment Abstraction Layer (EAL). */
     int ret = rte_eal_init(argc, argv);
@@ -604,11 +603,6 @@ int main(int argc, char *argv[])
         rte_exit(EXIT_FAILURE, "Cannot init port %u\n", enabled_port);
     
     printf("core_num:%d\n",n_lcores);
-
-    flowlog.tx_pps_timeline = (double *)malloc(MAX_LCORES * MAX_RECORD_COUNT);
-    flowlog.tx_bps_timeline = (double *)malloc(MAX_LCORES * MAX_RECORD_COUNT);
-    flowlog.rx_pps_timeline = (double *)malloc(MAX_LCORES * MAX_RECORD_COUNT);
-    flowlog.rx_pps_timeline = (double *)malloc(MAX_LCORES * MAX_RECORD_COUNT);
 
     gettimeofday(&timetag, NULL);
     rte_eal_mp_remote_launch((lcore_function_t *)launch_one_lcore, NULL, CALL_MAIN);
@@ -648,14 +642,21 @@ int main(int argc, char *argv[])
     for (i = 0;i<MAX_RECORD_COUNT;i++){
         double tx_pps_p = 0, tx_bps_p = 0;
         for (j = 0;j<MAX_LCORES;j++){
-            tx_pps_p += flowlog.rx_pps_timeline[j * MAX_RECORD_COUNT + i];;
-            tx_bps_p += flowlog.rx_bps_timeline[j * MAX_RECORD_COUNT + i];
+            if(rte_lcore_is_enabled(j)) {
+                tx_pps_p += flowlog_timeline[j][i].tx_pps_t;
+                tx_bps_p += flowlog_timeline[j][i].tx_pps_t;
+            }
         }
         fprintf(fp, "%d,%ld,%d,%d,%d,%lf,%lf,0,0\r\n", \
                 n_lcores, timetag.tv_sec, FLOW_NUM, PKT_LEN, i, tx_pps_p, tx_bps_p);
     }
     fclose(fp);
 
+    for (j = 0;j<MAX_LCORES;j++){
+        if(rte_lcore_is_enabled(j)) {
+            free(flowlog_timeline[j]);
+        }
+    }
     // /* Calculate minimum TSC diff for returning signed packets */
     // min_txintv *= rte_get_timer_hz() / US_PER_S;
     // printf("TSC freq: %lu Hz\n", rte_get_timer_hz());
