@@ -635,7 +635,7 @@ int main(int argc, char *argv[])
  
     if (unlikely(access(THROUGHPUT_TIME_FILE, 0) != 0)){
         fp = fopen(THROUGHPUT_TIME_FILE, "a+");
-        fprintf(fp, "core,timestamp,flow_num,pkt_len,time,send_pps,send_bps,,rcv_pps,rcv_bps\r\n");
+        fprintf(fp, "core,timestamp,flow_num,pkt_len,time,send_pps,send_bps,rcv_pps,rcv_bps\r\n");
     }else{
         fp = fopen(THROUGHPUT_TIME_FILE, "a+");
     }
