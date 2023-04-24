@@ -65,10 +65,10 @@ struct lcore_configuration {
 } __rte_cache_aligned;
 
 struct flow_log {
-    double *tx_pps_timeline;
-    double *tx_bps_timeline;
-    double *rx_pps_timeline;
-    double *rx_bps_timeline;
+    double tx_pps_t;
+    double tx_bps_t;
+    double rx_pps_t;
+    double rx_bps_t;
 };
 
 static unsigned enabled_port = 0;
@@ -86,10 +86,8 @@ uint64_t tx_pps[MAX_LCORES];
 uint64_t rx_pps[MAX_LCORES];
 double tx_bps[MAX_LCORES];
 double rx_bps[MAX_LCORES];
-double rx_pps_timeline[MAX_LCORES][MAX_RECORD_COUNT];
-double rx_bps_timeline[MAX_LCORES][MAX_RECORD_COUNT];
-// double (*rx_pps_timeline)[128] = (double(*)[128])malloc(sizeof(double) * 72 * 128);
-// double (*rx_bps_timeline)[128] = (double(*)[128])malloc(sizeof(double) * 72 * 128);
+struct flow_log *flowlog_timeline[MAX_LCORES];
+
 /*
  * The lcore main. This is the main thread that does the work, reading from
  * an input port and writing to an output port.
@@ -119,6 +117,13 @@ static void lcore_main(uint32_t lcore_id, struct flow_log *flowlog)
     uint64_t time_last_print = start;
     uint64_t time_now;
 
+    if (unlikely(flowlog_timeline[lcore_id] != NULL)){
+        rte_exit(EXIT_FAILURE, "There are error when allocate memory to flowlog.\n");
+    }else{
+        flowlog_timeline[lcore_id] = (struct flow_log *) malloc(sizeof(struct flow_log) * MAX_RECORD_COUNT);
+        memset(flowlog_timeline[lcore_id], 0, sizeof(struct flow_log) * MAX_RECORD_COUNT);
+    }
+
     while (!force_quit && record_count < MAX_RECORD_COUNT) {
         int i;
         for (i = 0; i < lconf->n_rx_queue; i++){
@@ -144,8 +149,8 @@ static void lcore_main(uint32_t lcore_id, struct flow_log *flowlog)
             time_last_print=time_now;
             last_total_rx = total_rx;
             last_total_rxB = total_rxB;
-            flowlog->rx_pps_timeline[lcore_id * MAX_RECORD_COUNT + record_count] = (double)drx/time_inter_temp;
-            flowlog->rx_bps_timeline[lcore_id * MAX_RECORD_COUNT + record_count] = (double)drxB*8/time_inter_temp;
+            flowlog_timeline[lcore_id][record_count].rx_pps_t = (double)drx/time_inter_temp;
+            flowlog_timeline[lcore_id][record_count].rx_bps_t = (double)drxB*8/time_inter_temp;
 
             record_count++;
         }
@@ -369,11 +374,6 @@ int main(int argc, char *argv[])
     /* Call lcore_main on the main core only. */
     printf("core_num:%d\n",n_lcores);
 
-    flowlog.tx_pps_timeline = (double *)malloc(sizeof(double) * MAX_LCORES * MAX_RECORD_COUNT);
-    flowlog.tx_bps_timeline = (double *)malloc(sizeof(double) * MAX_LCORES * MAX_RECORD_COUNT);
-    flowlog.rx_pps_timeline = (double *)malloc(sizeof(double) * MAX_LCORES * MAX_RECORD_COUNT);
-    flowlog.rx_pps_timeline = (double *)malloc(sizeof(double) * MAX_LCORES * MAX_RECORD_COUNT);
-
     gettimeofday(&timetag, NULL);
     rte_eal_mp_remote_launch((lcore_function_t *)launch_one_lcore, &flowlog, CALL_MAIN);
     RTE_LCORE_FOREACH_WORKER(lcore_id){
@@ -401,9 +401,9 @@ int main(int argc, char *argv[])
         total_rx_pps += rx_pps[i];
         total_rx_bps += rx_bps[i];
     }
-    APP_LOG("Total Sent %ld pkts, received %ld pkts, throughput: %lf pps, %lf bps.\n", total_tx_pkt_num, total_rx_pkt_num, total_rx_pps, total_rx_bps);
     fprintf(fp, "%d,%ld,%ld,%ld,0,0,%lf,%lf\r\n", n_lcores, timetag.tv_sec, total_tx_pkt_num, total_rx_pkt_num, total_rx_pps, total_rx_bps);
     fclose(fp);
+    APP_LOG("Total Sent %ld pkts, received %ld pkts, throughput: %lf pps, %lf bps.\n", total_tx_pkt_num, total_rx_pkt_num, total_rx_pps, total_rx_bps);
 
     if (unlikely(access(THROUGHPUT_TIME_FILE, 0) != 0)){
         fp = fopen(THROUGHPUT_TIME_FILE, "a+");
@@ -414,13 +414,21 @@ int main(int argc, char *argv[])
     for (i = 0;i<MAX_RECORD_COUNT;i++){
         double rx_pps_p = 0, rx_bps_p = 0;
         for (j = 0;j<MAX_LCORES;j++){
-            rx_pps_p += flowlog.rx_pps_timeline[j * MAX_RECORD_COUNT + i];
-            rx_bps_p += flowlog.rx_bps_timeline[j * MAX_RECORD_COUNT + i];
+            if(rte_lcore_is_enabled(j)) {
+                rx_pps_p += flowlog_timeline[j][i].rx_pps_t;
+                rx_bps_p += flowlog_timeline[j][i].rx_pps_t;
+            }
         }
         fprintf(fp, "%d,%ld,%d,0,0,%lf,%lf\r\n", \
                 n_lcores, timetag.tv_sec, i, rx_pps_p, rx_bps_p);
     }
     fclose(fp);
+
+    for (j = 0;j<MAX_LCORES;j++){
+        if(rte_lcore_is_enabled(j)) {
+            free(flowlog_timeline[j]);
+        }
+    }
 
     /* Cleaning up. */
     fflush(stdout);

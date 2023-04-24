@@ -2,10 +2,11 @@ test_time_rcv=120
 test_time_send=100
 file=pkt_send_mul_auto_sta2
 remotefile=pkt_rcv_mul_auto_sta
-# src_nic=ens3np0 #cx5
-src_nic=ens1np0 #cx4
-# src_nic=enp175s0 #cx5
-rcv_nic=enp216s0f0 #bf2
+line="bf2"
+# line="cx5"
+
+flow_size=1000000000
+
 user="qyn"
 if [[ ${user} == "cz" ]]
 then
@@ -25,8 +26,9 @@ do
     do
         nohup expect remote_run_sta_cx4.expect $test_time_rcv $run_path $user $password $remotefile $rcv_nic >> ./lab_results/log/remote.out 2>&1 &
         sleep 8s
-        ./start_sta.sh $file $src_nic "192.168.200.1" $core_id $flow_num 64 $test_time_send $run_path 150 #149,bf2tocx4
-        # ./start_sta.sh pkt_send_mul_auto_sta2/ enp216s0f0 "192.168.200.2" 18-20 100 64 20 /home/qyn/software/FastNIC 149
+        echo ./start_sta.sh $file $line 150 $core_id $flow_num 64 $flow_size $test_time_send $run_path
+        ./start_sta.sh $file $line 150 $core_id $flow_num 64 $flow_size $test_time_send $run_path #149,bf2tocx4
+         # sudo ./build/pkt_send_mul_auto_sta3 -l 0,2 -a 0000:5e:00.0 -- --srcmac b8:83:03:82:a2:10 --dstmac 0c:42:a1:d8:10:84
         sleep 30s
     done
 done

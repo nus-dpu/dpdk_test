@@ -289,8 +289,12 @@ static void lcore_main(uint32_t lcore_id, struct flow_log *flowlog)
     uint64_t time_last_print = start;
     uint64_t time_now;
 
-    flowlog_timeline[lcore_id] = (struct flow_log *) malloc(sizeof(struct flow_log) * MAX_RECORD_COUNT);
-    memset(flowlog_timeline[lcore_id], 0, sizeof(struct flow_log) * MAX_RECORD_COUNT);
+    if (unlikely(flowlog_timeline[lcore_id] != NULL)){
+        rte_exit(EXIT_FAILURE, "There are error when allocate memory to flowlog.\n");
+    }else{
+        flowlog_timeline[lcore_id] = (struct flow_log *) malloc(sizeof(struct flow_log) * MAX_RECORD_COUNT);
+        memset(flowlog_timeline[lcore_id], 0, sizeof(struct flow_log) * MAX_RECORD_COUNT);
+    }
 
     while (!force_quit && record_count < MAX_RECORD_COUNT) {
         int i;
