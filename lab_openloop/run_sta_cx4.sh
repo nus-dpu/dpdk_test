@@ -19,6 +19,14 @@ then
     password="nesc77qq"
 fi
 
+# adjust timestamp
+ssh qyn@10.15.198.149 "sudo service ntp stop"
+ssh qyn@10.15.198.149 "sudo ntpdate -v 10.15.198.150"
+ssh qyn@10.15.198.149 "sudo service ntp start"
+ssh ubuntu@10.15.198.148 "sudo service ntp stop"
+ssh ubuntu@10.15.198.148 "sudo ntpdate -v 10.15.198.150"
+ssh ubuntu@10.15.198.148 "sudo service ntp start"
+
 i=0
 for core_id in {"0","0,2","0,2,4,6","0,2,4,6,8,10,12,14","0,2,4,6,8,10,12,14,16,18,20,22","0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30","0-31"}
 # for core_id in {"0","0,2"}
