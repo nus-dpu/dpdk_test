@@ -92,7 +92,7 @@ struct flow_log *flowlog_timeline[MAX_LCORES];
  * The lcore main. This is the main thread that does the work, reading from
  * an input port and writing to an output port.
  */
-static void lcore_main(uint32_t lcore_id, struct flow_log *flowlog)
+static void lcore_main(uint32_t lcore_id)
 {
     // Check that the port is on the same NUMA node.
     if (rte_eth_dev_socket_id(enabled_port) > 0 &&
@@ -169,7 +169,7 @@ static void lcore_main(uint32_t lcore_id, struct flow_log *flowlog)
 static int
 launch_one_lcore(__attribute__((unused)) void *arg){
     uint32_t lcore_id = rte_lcore_id();
-	lcore_main(lcore_id, arg);
+	lcore_main(lcore_id);
 	return 0;
 }
 
@@ -333,7 +333,6 @@ int main(int argc, char *argv[])
     int i, j;
     uint32_t n_lcores = 0;
     struct timeval timetag;
-    struct flow_log flowlog;
 
     /* Initialize the Environment Abstraction Layer (EAL). */
     int ret = rte_eal_init(argc, argv);
@@ -375,7 +374,7 @@ int main(int argc, char *argv[])
     printf("core_num:%d\n",n_lcores);
 
     gettimeofday(&timetag, NULL);
-    rte_eal_mp_remote_launch((lcore_function_t *)launch_one_lcore, &flowlog, CALL_MAIN);
+    rte_eal_mp_remote_launch((lcore_function_t *)launch_one_lcore, NULL, CALL_MAIN);
     RTE_LCORE_FOREACH_WORKER(lcore_id){
         if (rte_eal_wait_lcore(lcore_id) < 0) {
             ret = -1;

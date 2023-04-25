@@ -250,7 +250,7 @@ static struct rte_mbuf *make_testpkt(uint32_t queue_id, struct flow_table *flow)
  * The lcore main. This is the main thread that does the work, reading from
  * an input port and writing to an output port.
  */
-static void lcore_main(uint32_t lcore_id, struct flow_log *flowlog)
+static void lcore_main(uint32_t lcore_id)
 {
     // Check that the port is on the same NUMA node.
     if (rte_eth_dev_socket_id(enabled_port) > 0 &&
@@ -352,7 +352,7 @@ static void lcore_main(uint32_t lcore_id, struct flow_log *flowlog)
 static int
 launch_one_lcore(__attribute__((unused)) void *arg){
     uint32_t lcore_id = rte_lcore_id();
-	lcore_main(lcore_id, arg);
+	lcore_main(lcore_id);
 	return 0;
 }
 
