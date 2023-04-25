@@ -14,7 +14,6 @@ send "cd $run_path\r"
 
 expect "qyn@bf2" 
 send "./start_sta.sh $file_name $line 149 18-35 -1 -1 -1 $test_time $run_path 149\r"
-
 expect {
     "*password*" { send "$password\r" }
 }

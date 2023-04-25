@@ -19,6 +19,7 @@ then
     password="nesc77qq"
 fi
 
+cd $run_path
 i=0
 for core_id in {"0","0,2","0,2,4,6","0,2,4,6,8,10,12,14","0,2,4,6,8,10,12,14,16,18,20,22","0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30","0-31"}
 # for core_id in {"0","0,2"}
@@ -30,12 +31,11 @@ do
         sleep 8s
         echo ./start_sta.sh $file $line 150 $core_id $flow_num 64 $flow_size $test_time_send $run_path
         ./start_sta.sh $file $line 150 $core_id $flow_num 64 $flow_size $test_time_send $run_path #149,bf2tocx4
-        # #./start_sta.sh pkt_send_mul_auto_sta3 bf2 150 0 1000 64 100000 10 /home/qyn/software/FastNIC/lab_openloop
+        # ./start_sta.sh pkt_send_mul_auto_sta3 bf2 150 0 1000 64 100000 10 /home/qyn/software/FastNIC/lab_openloop
         sleep 30s
 
         ((i++))
 
-        cd $run_path
         mkdir ./lab_results/${file}/send_$i
         mv ./lab_results/${file}/*.csv ./lab_results/${file}/send_$i/
         
