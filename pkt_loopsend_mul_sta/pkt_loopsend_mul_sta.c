@@ -47,7 +47,6 @@
 #define ZIPF_A 1.25
 #define ZIPF_C 1.0
 
-#define PROGRAM "pkt_send_mul_auto_sta2"
 #define THROUGHPUT_FILE "../lab_results/" PROGRAM "/throughput.csv"
 #define THROUGHPUT_TIME_FILE   "../lab_results/" PROGRAM "/throughput_time.csv"
 
