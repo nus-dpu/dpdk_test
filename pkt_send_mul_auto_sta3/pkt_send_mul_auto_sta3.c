@@ -340,7 +340,7 @@ static void lcore_main(uint32_t lcore_id)
     // uint64_t time_interval = rte_rdtsc() - start;
     double time_interval = (double)(rte_rdtsc() - start)/rte_get_timer_hz();
     APP_LOG("lcoreID %d: run time: %lf.\n", lcore_id, time_interval);
-    APP_LOG("lcoreID %d: Sent %ld pkts, received %ld pkts, throughput: %lf pps, %lf bps.\n", \
+    APP_LOG("lcoreID %d: Sent %ld pkts, received %ld pkts, TX: %lf pps, %lf bps.\n", \
             lcore_id, total_tx, total_rx, (double)total_tx/time_interval, (double)total_txB*8/time_interval);
     APP_LOG("lcoreID %d: times of loop is %ld, should send packets %ld.\n", lcore_id, loop_count, loop_count*BURST_SIZE);
     tx_pkt_num[lcore_id] = total_tx;
@@ -633,9 +633,11 @@ int main(int argc, char *argv[])
         total_tx_pps += tx_pps[i];
         total_tx_bps += tx_bps[i];
     }
-    fprintf(fp, "%d,%ld,%d,%d,%ld,%ld,%lf,%lf,0,0\r\n", n_lcores, timetag.tv_sec, FLOW_NUM, PKT_LEN, total_tx_pkt_num, total_rx_pkt_num, total_tx_pps, total_tx_bps);
+    fprintf(fp, "%d,%ld,%d,%d,%ld,%ld,%lf,%lf,0,0\r\n", \
+            n_lcores, timetag.tv_sec, FLOW_NUM, PKT_LEN, total_tx_pkt_num, total_rx_pkt_num, total_tx_pps, total_tx_bps);
     fclose(fp);
-    APP_LOG("Total Sent %ld pkts, received %ld pkts, throughput: %lf pps, %lf bps.\n", total_tx_pkt_num, total_rx_pkt_num, total_tx_pps, total_tx_bps);
+    APP_LOG("Total Sent %ld pkts, received %ld pkts, TX: %lf pps, %lf bps.\n", \
+            total_tx_pkt_num, total_rx_pkt_num, total_tx_pps, total_tx_bps);
  
     if (unlikely(access(THROUGHPUT_TIME_FILE, 0) != 0)){
         fp = fopen(THROUGHPUT_TIME_FILE, "a+");
