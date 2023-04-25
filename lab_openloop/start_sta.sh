@@ -29,7 +29,6 @@ then
     dst_ip="192.168.201.1"
     dst_mac="08:c0:eb:de:41:f2"
 fi
-echo  test${src_nic_name}
 src_mac=`ifconfig ${src_nic_name}|grep ether|awk '{print $2}'`
 src_pci=`ethtool -i ${src_nic_name}|grep bus-info|awk '{print $2}'`
 # dst_mac=`arp ${dst_ip}|grep ether|awk '{print $3}'`
