@@ -25,7 +25,7 @@ then
     dst_mac="08:c0:eb:de:43:2e"
 elif [[ $line == "cx5" && $host_name == 150 ]] #cx5(withbf4)-cx5(withcx5)
 then 
-    src_nic_name="enp175s0"
+    src_nic_name="ens3np0"
     dst_ip="192.168.201.1"
     dst_mac="08:c0:eb:de:41:f2"
 fi
