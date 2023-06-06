@@ -1,5 +1,8 @@
-test_time_rcv=120
-test_time_send=100
+test_time_rcv=30
+test_time_send=10
+
+# test_time_rcv=120
+# test_time_send=100
 file=pkt_send_mul_auto_sta2
 remotefile=pkt_rcv_mul_auto_sta
 line="bf2"
@@ -19,14 +22,16 @@ then
 fi
 
 # for core_id in {18,18-19,18-21,18-23,18-25,18-27,18-29,18-31,18-33,18-35}
-for core_id in {"0-31","0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30","0,2,4,6"}
+# for core_id in {"0-31","0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30","0,2,4,6,8,10,12,14","0,2,4,6","0,2"}
+for core_id in {"0-31","0,2"}
 do
     # for flow_num in {100,1000,10000,30000,50000,70000,90000,100000}
     for flow_num in {1000,100000}
     do
-        nohup expect remote_run_sta_cx4.expect $test_time_rcv $run_path $user $password $remotefile $rcv_nic >> ./lab_results/log/remote.out 2>&1 &
+        nohup expect remote_run_sta_cx4.expect $test_time_rcv $run_path $user $password $remotefile $line >> ./lab_results/log/remote.out 2>&1 &
+        echo "nohup expect remote_run_sta_cx4.expect $test_time_rcv $run_path $user $password $remotefile $line >> ./lab_results/log/remote.out 2>&1 &"
         sleep 8s
-        echo ./start_sta.sh $file $line 150 $core_id $flow_num 64 $flow_size $test_time_send $run_path
+        echo "./start_sta.sh $file $line 150 $core_id $flow_num 64 $flow_size $test_time_send $run_path"
         ./start_sta.sh $file $line 150 $core_id $flow_num 64 $flow_size $test_time_send $run_path #149,bf2tocx4
         # ./start_sta.sh pkt_send_mul_auto_sta3 bf2 150 0 1000 64 100000 10 /home/qyn/software/FastNIC/lab_openloop
         # sudo ./build/pkt_send_mul_auto_sta3 -l 0,2 -a 0000:5e:00.0 -- --srcmac b8:83:03:82:a2:10 --dstmac 0c:42:a1:d8:10:84

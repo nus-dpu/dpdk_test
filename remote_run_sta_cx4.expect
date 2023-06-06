@@ -5,7 +5,7 @@ set run_path [lindex $argv 1]
 set user [lindex $argv 2]
 set password [lindex $argv 3]
 set file_name [lindex $argv 4] 
-set rcv_nic [lindex $argv 5] 
+set line [lindex $argv 5] 
 set ip 10.15.198.149
 spawn ssh $user@$ip
 
@@ -18,7 +18,7 @@ expect {
     "*password*" { send "$password\r" }
 }
 
-expect "qyn@cx4" 
+expect "qyn@bf2" 
 send "exit\r" 
 
 expect eof

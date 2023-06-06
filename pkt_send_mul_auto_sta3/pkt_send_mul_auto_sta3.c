@@ -333,7 +333,7 @@ static void lcore_main(uint32_t lcore_id)
             record_count++;
         }
 
-        if (pkt_makenum % FLOW_NUM >= FLOW_SIZE){
+        if (pkt_makenum / FLOW_NUM >= FLOW_SIZE){
             break;
         }
     }

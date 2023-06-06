@@ -1,12 +1,12 @@
-test_time_rcv=1020
-test_time_send=1000
+# test_time_rcv=120
+# test_time_send=100
+test_time_rcv=50
+test_time_send=30
 lab=lab_openloop
 file=pkt_send_mul_auto_sta3
 remotefile=pkt_rcv_mul_auto_sta3
 line="bf2"
 # line="cx5"
-
-flow_size=1000000000
 
 user="qyn"
 if [[ ${user} == "cz" ]]
@@ -21,11 +21,14 @@ fi
 
 cd $run_path
 i=0
-for core_id in {"0","0,2","0,2,4,6","0,2,4,6,8,10,12,14","0,2,4,6,8,10,12,14,16,18,20,22","0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30","0-31"}
-# for core_id in {"0","0,2"}
+# flow_size=1000000000
+flow_num=100000
+# for core_id in {"0","0,2","0,2,4,6","0,2,4,6,8,10,12,14","0,2,4,6,8,10,12,14,16,18,20,22","0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30","0-31"}
+for core_id in {"0","0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30"}
 do
-    for flow_num in {100,1000,10000,30000,50000,70000,90000,100000}
+    # for flow_num in {100,1000,10000,30000,50000,70000,90000,100000}
     # for flow_num in {1000,100000}
+    for flow_size in {10,1000000000}
     do
         nohup expect remote_run_sta_cx4.expect $test_time_rcv $run_path $user $password $remotefile $line >> ./lab_results/log/remote.out 2>&1 &
         sleep 8s
