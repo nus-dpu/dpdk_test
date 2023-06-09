@@ -1,7 +1,8 @@
 file=pkt_send_mul_auto_sta2
 remotefile=pkt_rcv_mul_auto_sta
-run_path="/home/qyn/software/FastNIC"
+run_path="/home/qyn/software/FastNIC/send_recv_lab"
 
+cd $run_path
 rm ./lab_results/log/remote.out
 rm ./lab_results/log/bf.out
 rm -f ./lab_results/$file/throughput*

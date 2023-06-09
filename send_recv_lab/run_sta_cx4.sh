@@ -1,8 +1,7 @@
-test_time_rcv=30
-test_time_send=10
-
-# test_time_rcv=120
-# test_time_send=100
+# test_time_rcv=30
+# test_time_send=10
+test_time_rcv=320
+test_time_send=300
 file=pkt_send_mul_auto_sta2
 remotefile=pkt_rcv_mul_auto_sta
 line="bf2"
@@ -17,16 +16,16 @@ then
     password="123456"
 elif [[ ${user} == "qyn" ]]
 then
-    run_path="/home/qyn/software/FastNIC"
+    run_path="/home/qyn/software/FastNIC/send_recv_lab"
     password="nesc77qq"
 fi
 
 # for core_id in {18,18-19,18-21,18-23,18-25,18-27,18-29,18-31,18-33,18-35}
-# for core_id in {"0-31","0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30","0,2,4,6,8,10,12,14","0,2,4,6","0,2"}
-for core_id in {"0-31","0,2"}
+for core_id in {"0-31","0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30","0,2,4,6,8,10,12,14","0,2,4,6","0,2"}
+# for core_id in {"0-31","0,2"}
 do
-    # for flow_num in {100,1000,10000,30000,50000,70000,90000,100000}
-    for flow_num in {1000,100000}
+    for flow_num in {100,1000,10000,30000,50000,70000,90000,100000}
+    # for flow_num in {1000,100000}
     do
         nohup expect remote_run_sta_cx4.expect $test_time_rcv $run_path $user $password $remotefile $line >> ./lab_results/log/remote.out 2>&1 &
         echo "nohup expect remote_run_sta_cx4.expect $test_time_rcv $run_path $user $password $remotefile $line >> ./lab_results/log/remote.out 2>&1 &"

@@ -1,3 +1,0 @@
-#define FLOW_NUM 100
-#define PKT_LEN 64
-#define MAX_RECORD_COUNT 20

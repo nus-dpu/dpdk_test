@@ -13,7 +13,7 @@ then
     password="123456"
 elif [[ ${user} == "qyn" ]]
 then
-    run_path="/home/qyn/software/FastNIC"
+    run_path="/home/qyn/software/FastNIC/send_recv_lab"
     password="nesc77qq"
 fi
 
