@@ -26,7 +26,7 @@ echo dst_mac:${dst_mac}
 echo -e '\n'
 
 export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig/ #149
-cd /home/qyn/software/FastNIC/$file_name/
+cd /home/qyn/software/FastNIC/send_recv_lab/$file_name/
 make clean
 make
 
