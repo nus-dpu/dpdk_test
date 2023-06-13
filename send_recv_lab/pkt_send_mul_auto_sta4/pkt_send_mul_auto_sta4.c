@@ -41,8 +41,8 @@
 #define APP_LOG(...) RTE_LOG(INFO, USER1, __VA_ARGS__)
 // #define PRN_COLOR(str) ("\033[0;33m" str "\033[0m")	// Yellow accent
 
-#define THROUGHPUT_FILE "../../lab_results/" PROGRAM "/throughput.csv"
-#define THROUGHPUT_TIME_FILE   "../../lab_results/" PROGRAM "/throughput_time.csv"
+#define THROUGHPUT_FILE "../lab_results/" PROGRAM "/throughput.csv"
+#define THROUGHPUT_TIME_FILE   "../lab_results/" PROGRAM "/throughput_time.csv"
 #define PCAP_FILE "../../dataset/synthetic/test.pcap"
 
 struct lcore_configuration {
