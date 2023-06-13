@@ -311,7 +311,7 @@ static void lcore_main(uint32_t lcore_id)
             total_tx += nb_tx;
             total_txB += (bufs_tx[0]->data_len*nb_tx);
             if (nb_tx < BURST_SIZE){
-                rte_pktmbuf_free_bulk(bufs_tx, BURST_SIZE - nb_tx);
+                rte_pktmbuf_free_bulk(bufs_tx + nb_tx, BURST_SIZE - nb_tx);
             }
             //Receive packets
             const uint16_t nb_rx = rte_eth_rx_burst(lconf->port, lconf->rx_queue_list[i], bufs_rx, BURST_SIZE);

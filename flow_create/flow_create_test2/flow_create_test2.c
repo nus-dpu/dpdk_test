@@ -93,7 +93,7 @@ packet_send_main_loop(void)
         // length += (bufs_tx[0]->data_len*nb_tx);
 		// loop_count++;
         if (nb_tx < BURST_SIZE){
-            rte_pktmbuf_free_bulk(bufs_tx, BURST_SIZE - nb_tx);
+            rte_pktmbuf_free_bulk(bufs_tx + nb_tx, BURST_SIZE - nb_tx);
         }
 	}
 	/* >8 End of reading the packets from all queues. */

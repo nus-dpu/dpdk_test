@@ -260,7 +260,7 @@ static void lcore_main(uint32_t lcore_id)
             total_tx += nb_tx;
             length += (bufs_tx[0]->data_len*nb_tx);
             if (nb_tx < BURST_SIZE){
-                rte_pktmbuf_free_bulk(bufs_tx, BURST_SIZE - nb_tx);
+                rte_pktmbuf_free_bulk(bufs_tx + nb_tx, BURST_SIZE - nb_tx);
             }
         }
         loop_count++;
