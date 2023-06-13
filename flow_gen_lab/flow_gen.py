@@ -25,11 +25,13 @@ def pktfile_gen(file, flow_num, pkts_count, pkts_per_write, zipf_a):
         # if len(packets) >= pkts_per_write:
         #     wrpcap(file, packets, append=True)
         #     packets = []
-        wrpcap(file, packets)
 
     # Write any remaining packets
+    # if packets:
+    #     wrpcap(file, packets, append=True)
     if packets:
-        wrpcap(file, packets, append=True)
+        wrpcap(file, packets)
+
 
 
 def main():
