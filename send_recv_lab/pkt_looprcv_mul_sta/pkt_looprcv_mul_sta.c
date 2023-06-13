@@ -468,6 +468,9 @@ int main(int argc, char *argv[])
 
     if (unlikely(access(THROUGHPUT_FILE, 0) != 0)){
         fp = fopen(THROUGHPUT_FILE, "a+");
+        if(unlikely(fp == NULL)){
+            rte_exit(EXIT_FAILURE, "Cannot open file %s\n", THROUGHPUT_FILE);
+        }
         fprintf(fp, "core,timestamp,send_pkts,rcv_pkts,send_pps,send_bps,rcv_pps,rcv_bps\r\n");
     }else{
         fp = fopen(THROUGHPUT_FILE, "a+");
