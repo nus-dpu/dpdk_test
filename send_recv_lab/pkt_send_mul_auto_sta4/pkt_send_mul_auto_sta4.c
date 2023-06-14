@@ -33,8 +33,8 @@
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024
 
-#define NUM_MBUFS 100000//(PKTS_NUM+BURST_SIZE)
-#define MBUF_SIZE   (10000+sizeof(struct rte_mbuf)+RTE_PKTMBUF_HEADROOM)
+#define NUM_MBUFS 6000000//(PKTS_NUM+BURST_SIZE)
+#define MBUF_SIZE  (sizeof(struct rte_mbuf)+RTE_PKTMBUF_HEADROOM)
 #define MBUF_CACHE_SIZE 32
 #define PAY_LOAD_LEN (PKT_LEN-28) //udp 
 
@@ -43,7 +43,7 @@
 
 #define THROUGHPUT_FILE "../lab_results/" PROGRAM "/throughput.csv"
 #define THROUGHPUT_TIME_FILE   "../lab_results/" PROGRAM "/throughput_time.csv"
-#define PCAP_FILE "../../dataset/synthetic/test.pcap"
+#define PCAP_FILE "../../dataset/synthetic/flow_" FLOW_NUM ".pcap"
 
 struct lcore_configuration {
     uint32_t vid; // virtual core id

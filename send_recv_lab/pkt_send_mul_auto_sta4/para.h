@@ -1,4 +1,4 @@
-#define PKTS_NUM 32
+#define PKTS_NUM 5000000
 
 #define FLOW_NUM 1000
 #define PKT_LEN 64
