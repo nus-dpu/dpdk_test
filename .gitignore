@@ -1,3 +1,5 @@
 auto_run
-*/lab_results/
+send_recv_lab/lab_results/
+lab_all/*/lab_results/
 */*/build
+lab_all/*/*/build
