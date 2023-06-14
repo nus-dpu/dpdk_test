@@ -73,10 +73,13 @@ then
     make clean
     make
     sudo ./build/$file_name -l ${core_id} -a ${src_pci} -- --srcmac ${src_mac} --dstmac ${dst_mac} 
-elif [[ ${file_name} == "pkt_send_mul_auto_sta4"]]
+elif [[ ${file_name} == "pkt_send_mul_auto_sta4" ]]
 then
     sed -i "s/#define FLOW_NUM.*$/#define FLOW_NUM ${flow_num}/" para.h
     sed -i "s/#define MAX_RECORD_COUNT.*$/#define MAX_RECORD_COUNT ${test_time}/" para.h
+    make clean
+    make
+    sudo ./build/$file_name -l ${core_id} -a ${src_pci} -- --srcmac ${src_mac} --dstmac ${dst_mac} 
 elif [[ ${file_name} == "pkt_rcv_mul_auto_sta" || \
         ${file_name} == "pkt_rcv_mul_auto_sta3" || \
         ${file_name} == "pkt_looprcv_mul_sta" ]]
