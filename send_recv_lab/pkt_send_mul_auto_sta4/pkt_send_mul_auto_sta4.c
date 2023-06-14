@@ -34,16 +34,19 @@
 #define TX_RING_SIZE 1024
 
 #define NUM_MBUFS 6000000//(PKTS_NUM+BURST_SIZE)
-#define MBUF_SIZE  (sizeof(struct rte_mbuf)+RTE_PKTMBUF_HEADROOM)
-#define MBUF_CACHE_SIZE 32
+#define MBUF_SIZE  (1518+sizeof(struct rte_mbuf)+RTE_PKTMBUF_HEADROOM)
+#define MBUF_CACHE_SIZE 250
 #define PAY_LOAD_LEN (PKT_LEN-28) //udp 
 
 #define APP_LOG(...) RTE_LOG(INFO, USER1, __VA_ARGS__)
 // #define PRN_COLOR(str) ("\033[0;33m" str "\033[0m")	// Yellow accent
 
+#define TO_STRING(a) #a
+#define STRING_THRANFER(a) TO_STRING(a)
+#define PCAP_FILE(a) ("../../dataset/synthetic/flow_" STRING_THRANFER(a) ".pcap")
+
 #define THROUGHPUT_FILE "../lab_results/" PROGRAM "/throughput.csv"
 #define THROUGHPUT_TIME_FILE   "../lab_results/" PROGRAM "/throughput_time.csv"
-#define PCAP_FILE "../../dataset/synthetic/flow_" FLOW_NUM ".pcap"
 
 struct lcore_configuration {
     uint32_t vid; // virtual core id
@@ -95,6 +98,8 @@ double tx_bps[MAX_LCORES];
 double rx_bps[MAX_LCORES];
 struct flow_log *flowlog_timeline[MAX_LCORES];
 
+//
+
 // Callback function to process each packet
 void packet_handler(uint8_t *args, const struct pcap_pkthdr *header, const uint8_t *packet)
 {
@@ -108,6 +113,10 @@ void packet_handler(uint8_t *args, const struct pcap_pkthdr *header, const uint8
     buffer->count++;
 }
 
+void int_to_string(int input, char* output){
+    sprintf(output, "%d", input);
+}
+
 /*
  * The lcore main. This is the main thread that does the work, reading from
  * an input port and writing to an output port.
@@ -118,8 +127,6 @@ static void lcore_main(uint32_t lcore_id)
     if (rte_eth_dev_socket_id(enabled_port) > 0 &&
             rte_eth_dev_socket_id(enabled_port) != (int)rte_socket_id())
         printf("WARNING, port %u is on remote NUMA node.\n", enabled_port);
-    printf("Core %u forwarding packets. [Ctrl+C to quit]\n", rte_lcore_id());
-    fflush(stdout);
 
     /* Run until the application is quit or killed. */
     struct lcore_configuration *lconf = &lcore_conf[lcore_id];
@@ -165,6 +172,9 @@ static void lcore_main(uint32_t lcore_id)
         }
     }
 
+    printf("Core %u forwarding packets. [Ctrl+C to quit]\n", rte_lcore_id());
+    fflush(stdout);
+
     while (!force_quit && record_count < MAX_RECORD_COUNT) {
         for (i = 0; i < lconf->n_rx_queue; i++){
             rte_pktmbuf_alloc_bulk(pktmbuf_pool[queue_id], 
@@ -175,8 +185,11 @@ static void lcore_main(uint32_t lcore_id)
                 rte_memcpy(rte_pktmbuf_mtod(bufs_tx[j], void *), 
                            rte_pktmbuf_mtod(pkt_buffer[queue_id].mbufs[pkt_count], void*), 
                            pkt_buffer[queue_id].mbufs[pkt_count]->data_len);
-                bufs_tx[j]->pkt_len = pkt_buffer[queue_id].mbufs[pkt_count]->pkt_len;
-                bufs_tx[j]->data_len = pkt_buffer[queue_id].mbufs[pkt_count]->data_len;
+                bufs_tx[j]->pkt_len = 78;
+                bufs_tx[j]->data_len = 78;
+ 
+                // bufs_tx[j]->pkt_len = pkt_buffer[queue_id].mbufs[pkt_count]->pkt_len;
+                // bufs_tx[j]->data_len = pkt_buffer[queue_id].mbufs[pkt_count]->data_len;
                 
                 txB[j] = bufs_tx[j]->data_len;
 
@@ -452,7 +465,7 @@ static void signal_handler(int signum)
 
 static int pcap_init(void){
     //open pcap file
-    const char *pcap_file = PCAP_FILE;
+    const char *pcap_file = PCAP_FILE(FLOW_NUM);
     char errbuf[PCAP_ERRBUF_SIZE];
     handle = pcap_open_offline(pcap_file, errbuf);
     if (handle == NULL) {
