@@ -1,3 +1,5 @@
+#the version is to old, if want to use, please mmodify according to cx4 file
+
 test_time_rcv=1220
 test_time_send=1200
 file=pkt_send_mul_auto_sta2
