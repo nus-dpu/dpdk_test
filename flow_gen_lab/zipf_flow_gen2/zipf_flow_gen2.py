@@ -19,8 +19,8 @@ def pktfile_gen(file, flow_num, pkts_count, pkts_per_write, zipf_a):
         # Create a dummy packet (replace with your actual packet generation logic)
         src_ip = IP_PREFIX + zipf_dist_int[i]
         ethernet = Ether(dst='00:11:22:33:44:55', src='00:AA:BB:CC:DD:EE')
-        # ip = IP(src=src_ip, dst='192.168.0.2')
-        ip = IP(src='192.0.0.1', dst='192.168.0.2')
+        ip = IP(src=src_ip, dst='192.168.0.2')
+        # ip = IP(src='192.0.0.1', dst='192.168.0.2')
         tcp = TCP(sport=1234, dport=80)
 
         flow_size = struct.pack("=I", frequency[zipf_dist_int[i]])
