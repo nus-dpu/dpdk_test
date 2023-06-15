@@ -1,5 +1,5 @@
-file=pkt_send_mul_auto_sta2
-remotefile=pkt_rcv_mul_auto_sta
+file=pkt_send_mul_auto_sta4
+remotefile=pkt_rcv_mul_auto_sta3
 run_path="/home/qyn/software/FastNIC/send_recv_lab"
 
 cd $run_path

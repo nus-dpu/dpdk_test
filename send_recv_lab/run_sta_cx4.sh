@@ -1,7 +1,7 @@
-test_time_rcv=30
-test_time_send=10
-# test_time_rcv=320
-# test_time_send=300
+# test_time_rcv=30
+# test_time_send=10
+test_time_rcv=320
+test_time_send=300
 file=pkt_send_mul_auto_sta4
 remotefile=pkt_rcv_mul_auto_sta3
 line="bf2"
