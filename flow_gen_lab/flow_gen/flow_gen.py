@@ -14,9 +14,9 @@ def pktfile_gen(file, pkts_count):
         ip = IP(src='192.0.0.1', dst='192.168.0.2')
         tcp = TCP(sport=1234, dport=80)
 
-        flow_size = struct.pack("=I", pkts_count)
+        flow_size = struct.pack("!I", pkts_count)
         pkt_freq_cnt = pkt_freq_cnt + 1
-        pkt_seq = struct.pack("=I", pkt_freq_cnt)
+        pkt_seq = struct.pack("!I", pkt_freq_cnt)
         payload = Raw(load = flow_size + pkt_seq)
 
         packet = ethernet / ip / tcp / payload
@@ -28,7 +28,7 @@ def pktfile_gen(file, pkts_count):
 
 def main():
     # Parameters for packet generation and storage
-    pkt_num = 5000000 # Total number of packets to generate
+    pkt_num = 10 # Total number of packets to generate
 
     filename = "/dev/shm/flow_1.pcap"
     pktfile_gen(filename, pkt_num)
