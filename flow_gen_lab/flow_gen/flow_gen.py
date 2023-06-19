@@ -1,4 +1,4 @@
-from scapy.all import *
+from scapy.all import wrpcap, Ether, IP, TCP, Raw
 import numpy as np
 from collections import Counter
 import struct
