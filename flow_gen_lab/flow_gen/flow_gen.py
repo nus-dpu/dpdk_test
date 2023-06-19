@@ -17,8 +17,9 @@ def pktfile_gen(file, pkts_count):
         flow_size = struct.pack("!I", pkts_count)
         pkt_freq_cnt = pkt_freq_cnt + 1
         pkt_seq = struct.pack("!I", pkt_freq_cnt)
-        payload = Raw(load = flow_size + pkt_seq)
-
+        timestamp =  struct.pack("!Q", 20)
+        payload = Raw(load = flow_size + pkt_seq + timestamp)
+        
         packet = ethernet / ip / tcp / payload
         packets.append(packet)
 
