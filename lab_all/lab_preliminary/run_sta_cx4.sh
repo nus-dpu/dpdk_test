@@ -24,11 +24,12 @@ i=0
 
 core_id="0"
 for off_thre in {1,2,5,7,10,30}
-expect remote_bf2_config.expect $off_thre
 # for core_id in {18,18-19,18-21,18-23,18-25,18-27,18-29,18-31,18-33,18-35}
 # for core_id in {"0-31","0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30","0,2,4,6,8,10,12,14","0,2,4,6","0,2"}
 # for core_id in {"0","1"}
 do
+    echo "expect remote_bf2_config.expect $off_thre"
+    expect remote_bf2_config.expect $off_thre
     # for flow_num in {100,10000,50000,100000}
     for flow_num in {100,100000}
     do
