@@ -1,7 +1,7 @@
-# test_time_rcv=30
-# test_time_send=10
-test_time_rcv=320
-test_time_send=300
+test_time_rcv=30
+test_time_send=10
+# test_time_rcv=320
+# test_time_send=300
 file=pkt_send_mul_auto_sta4
 remotefile=pkt_rcv_mul_auto_sta3
 line="bf2"
@@ -16,12 +16,14 @@ then
     password="123456"
 elif [[ ${user} == "qyn" ]]
 then
-    run_path="/home/qyn/software/FastNIC/send_recv_lab"
+    run_path="/home/qyn/software/FastNIC/lab_all/lab_preliminary"
     password="nesc77qq"
 fi
 
+i=0
 
-expect remote_bf2_config.expect 20 >> ./lab_results/log/remote_bfconfig.out 2>&1 &
+expect remote_bf2_config.expect 30
+
 
 # for core_id in {18,18-19,18-21,18-23,18-25,18-27,18-29,18-31,18-33,18-35}
 # for core_id in {"0-31","0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30","0,2,4,6,8,10,12,14","0,2,4,6","0,2"}
@@ -38,6 +40,19 @@ do
         # ./start_sta.sh pkt_send_mul_auto_sta3 bf2 150 0 1000 64 100000 10 /home/qyn/software/FastNIC/lab_openloop
         # sudo ./build/pkt_send_mul_auto_sta3 -l 0,2 -a 0000:5e:00.0 -- --srcmac b8:83:03:82:a2:10 --dstmac 0c:42:a1:d8:10:84
         sleep 30s
+
+        ((i++))
+
+        mkdir ./lab_results/${file}/send_$i
+        mv ./lab_results/${file}/*.csv ./lab_results/${file}/send_$i/
+        
+        ssh qyn@10.15.198.149 "cd $run_path && mkdir ./lab_results/${remotefile}/rcv_$i"
+        ssh qyn@10.15.198.149 "cd $run_path/lab_results/${remotefile}/ && mv *csv rcv_$i/"
+       
+        ovsfile_path="/home/ubuntu/software/FastNIC/lab_results/ovs_log"
+        mkdir ./lab_results/ovslog/log_$i
+        scp ubuntu@10.15.198.148:$ovsfile_path/*.csv $run_path/lab_results/ovslog/log_$i
+        ssh ubuntu@10.15.198.148 "cd $ovsfile_path && rm -f ./*.csv"
     done
 done
 
