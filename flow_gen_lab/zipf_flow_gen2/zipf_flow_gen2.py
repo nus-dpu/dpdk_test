@@ -48,14 +48,14 @@ def pktfile_gen(file, flow_num, pkts_count, pkts_per_write, zipf_a):
 
 def main():
     # Parameters for packet generation and storage
-    pkt_num = 10 # Total number of packets to generate
+    pkt_num = 5000000 # Total number of packets to generate
     zipf_para = 2.0 # the parameter a for zipf
-    packets_per_write = 5  # Number of packets to write in each iteration    print("Hello, world!")
+    packets_per_write = 500  # Number of packets to write in each iteration    print("Hello, world!")
 
-    for flow_num in [1, 3]: # Total number of flows to generate
+    for flow_num in [100, 10000, 50000, 100000]: # Total number of flows to generate
         filename = "/dev/shm/flow_"+str(flow_num)+".pcap"
         pktfile_gen(filename, flow_num, pkt_num, packets_per_write, zipf_para)
-        print(f"{pkt_num} packets written to {filename}.")
+        print(f"{pkt_num} packets ({flow_num}flows in {zipf_para} zipf distribution) written to {filename}.")
 
 
 if __name__ == "__main__":

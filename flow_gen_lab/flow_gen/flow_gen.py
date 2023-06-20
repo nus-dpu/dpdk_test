@@ -29,7 +29,7 @@ def pktfile_gen(file, pkts_count):
 
 def main():
     # Parameters for packet generation and storage
-    pkt_num = 10 # Total number of packets to generate
+    pkt_num = 100 # Total number of packets to generate
 
     filename = "/dev/shm/flow_1.pcap"
     pktfile_gen(filename, pkt_num)
