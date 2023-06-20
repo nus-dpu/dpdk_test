@@ -59,7 +59,7 @@ struct lcore_configuration {
 
 struct packet_buffer {
     struct rte_mbuf **mbufs;
-    uint16_t count;
+    uint32_t count;
     uint32_t lcore_id;
     uint32_t queue_id;
 };
@@ -111,6 +111,18 @@ void packet_handler(uint8_t *args, const struct pcap_pkthdr *header, const uint8
     buffer->mbufs[buffer->count]->pkt_len = header->len;
     buffer->mbufs[buffer->count]->data_len = header->caplen;
     buffer->count++;
+
+    // int a;
+    // printf("packet %d:\n", buffer->count);
+    // // uint8_t* pkt_p = (uint8_t*)rte_pktmbuf_mtod(buffer->mbufs[buffer->count], void *);
+    // for(a = 0; a < 78; a++){
+    //     printf("%02x ", packet[a]);
+    //     if(a % 16 == 15){
+    //         printf("yes");
+    //         printf("\n");
+    //     }
+    // }
+    // printf("\n");
 }
 
 void int_to_string(int input, char* output){
@@ -192,6 +204,17 @@ static void lcore_main(uint32_t lcore_id)
                 // bufs_tx[j]->data_len = pkt_buffer[queue_id].mbufs[pkt_count]->data_len;
                 
                 txB[j] = bufs_tx[j]->data_len;
+//test print
+                // int a;
+                // printf("the packet %ld:\n", pkt_count);
+                // uint8_t *pkt_p = rte_pktmbuf_mtod(bufs_tx[j], uint8_t *);
+                // for(a = 0; a < 78; a++){
+                //     printf("%02x ", pkt_p[a]);
+                //     if(a % 16 == 15){
+                //         printf("\n");
+                //     }
+                // }
+                // printf("\n");
 
                 pkt_count++;
                 if (pkt_count == pkt_buffer[queue_id].count){
