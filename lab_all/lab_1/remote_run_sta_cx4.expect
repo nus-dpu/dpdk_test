@@ -13,7 +13,7 @@ expect "qyn@bf2"
 send "cd $run_path\r" 
 
 expect "qyn@bf2" 
-send "./start_sta.sh $file_name $line 149 18-35 $run_path $run_para\r"
+send "./start_sta.sh $file_name $line 149 18-35 $run_path "$run_para"\r"
 expect {
     "*password*" { send "$password\r" }
 }
