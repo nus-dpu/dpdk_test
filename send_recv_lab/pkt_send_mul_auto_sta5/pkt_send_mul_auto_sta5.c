@@ -33,9 +33,9 @@
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024
 
-#define NUM_MBUFS 1000000//(PKTS_NUM+BURST_SIZE)
+#define NUM_MBUFS 4095//(PKTS_NUM+BURST_SIZE)
 #define MBUF_SIZE  (1518+sizeof(struct rte_mbuf)+RTE_PKTMBUF_HEADROOM)
-#define MBUF_CACHE_SIZE 250
+#define MBUF_CACHE_SIZE 32
 #define PAY_LOAD_LEN (PKT_LEN-28) //udp 
 // #define PCAP_ENABLE
 
@@ -44,6 +44,9 @@
 
 #define TO_STRING(a) #a
 #define STRING_THRANFER(a) TO_STRING(a)
+
+#define SRC_IP_PREFIX ((192<<24)) /* dest ip prefix = 192.0.0.0.0 */
+#define DEST_IP_PREFIX ((193<<24)) /* dest ip prefix = 192.0.0.0.0 */
 
 #define THROUGHPUT_FILE "../lab_results/" PROGRAM "/throughput.csv"
 #define THROUGHPUT_TIME_FILE   "../lab_results/" PROGRAM "/throughput_time.csv"
@@ -300,17 +303,21 @@ static void lcore_main(uint32_t lcore_id)
 
     while (!force_quit && record_count < MAX_RECORD_COUNT && pkt_count < PKTS_NUM) {
         for (i = 0; i < lconf->n_rx_queue; i++){
+            #ifdef PCAP_ENABLE
             rte_pktmbuf_alloc_bulk(pktmbuf_pool[queue_id], 
                                    bufs_tx, 
                                    BURST_SIZE);
+            #endif
             for (j = 0; j < BURST_SIZE; j++){
                 struct flow flow_id;
-                flow_id.src_ip = (pkt_count % FLOW_NUM) / DST_IP_NUM;
-                flow_id.dst_ip = pkt_count % (DST_IP_NUM);
+                flow_id.src_ip = SRC_IP_PREFIX + (pkt_count % FLOW_NUM) / DST_IP_NUM;
+                flow_id.dst_ip = DEST_IP_PREFIX + pkt_count % (DST_IP_NUM);
                 flow_id.src_port = 1234;
                 flow_id.dst_port = 4321;
-
+                
+                #ifndef PCAP_ENABLE
                 bufs_tx[j] = make_testpkt(lconf->rx_queue_list[i], &flow_id);
+                #endif
 
                 /* packet copy from buffer to send*/
                 // rte_memcpy(rte_pktmbuf_mtod(bufs_tx[j], void *), 
@@ -648,7 +655,6 @@ int main(int argc, char *argv[])
     if (pcap_init() != 0)
         rte_exit(EXIT_FAILURE, "Cannot correctly open pcap file\n");
     #endif
-
     gettimeofday(&timetag, NULL);
     rte_eal_mp_remote_launch((lcore_function_t *)launch_one_lcore, NULL, CALL_MAIN);
     RTE_LCORE_FOREACH_WORKER(lcore_id){
@@ -657,7 +663,7 @@ int main(int argc, char *argv[])
             break;
         } 
     }
-    
+
     #ifdef PCAP_ENABLE
     pcap_close(handle);
     #endif
