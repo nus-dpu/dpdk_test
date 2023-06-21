@@ -47,7 +47,7 @@ do
   do
     src_ip=$(($src_ip_prefix+$j+$i*$SRC_I_CIRCLE_NUM))
     src_ip_dot=`num2ip $src_ip`
-    if [[ $(($j % 100)) == 0 ]];
+    if [[ $(($j % 1000)) == 0 ]];
     then
       echo $src_ip_dot
     fi
@@ -68,7 +68,7 @@ do
   do
     dst_ip=$(($dst_ip_prefix+$j+$i*$DST_I_CIRCLE_NUM))
     dst_ip_dot=`num2ip $dst_ip`
-    if [[ $(($j % 100)) == 0 ]];
+    if [[ $(($j % 1000)) == 0 ]];
     then
       echo $dst_ip_dot
     fi
