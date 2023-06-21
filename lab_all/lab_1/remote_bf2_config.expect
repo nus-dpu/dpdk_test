@@ -1,0 +1,38 @@
+#!/usr/bin/expect -f2
+set timeout -1
+set ofld_pkts [lindex $argv 0]
+
+set user ubuntu
+set ip 10.15.198.148
+spawn ssh $user@$ip
+
+expect "ubuntu@localhost"
+send "cd /home/ubuntu/software/ovs_all/myovs \r"
+
+expect "ubuntu@localhost"
+send "sed -i 's/#define OFFLOAD_THRE.*$/#define OFFLOAD_THRE ${ofld_pkts}/' ./lib/fastnic_offload.h \r"
+
+expect "ubuntu@localhost"
+send "sudo ~/bin/ovs-ctl stop \r"
+
+expect "ubuntu@localhost"
+send "make -j8 \r"
+
+expect "ubuntu@localhost"
+send "make install \r"
+
+expect "ubuntu@localhost" 
+send "sudo ~/bin/ovs-ctl start --system-id=random\r"
+
+expect "ubuntu@localhost"
+send "cd /home/ubuntu/software/auto_run/ \r"
+
+expect "ubuntu@localhost"
+send "./myovs_rules_install_file_quick.sh \r"
+
+expect "ubuntu@localhost" 
+send "exit\r" 
+
+expect eof
+
+
