@@ -22,16 +22,21 @@ pkt_len=-1
 test_time_rcv=50
 test_time_send=30
 
-flow_size_list=(1 2 5 10 100 1000 2000 5000 10000 50000 100000 500000 1000000 5000000 10000000 50000000)
-srcip_num_list=(10000 10000 1000 1000 1000 1000 1000 1000 1000 100 100 20 10 10 10 2)
-dstip_num_list=(10000 5000 20000 10000 1000 100 50 20 10 20 10 10 10 2 1 1)
+# flow_size_list=(1 2 5 10 100 1000 2000 5000 10000 50000 100000 500000 1000000 5000000 10000000 50000000)
+# srcip_num_list=(10000 10000 1000 1000 1000 1000 1000 1000 1000 100 100 20 10 10 10 2)
+# dstip_num_list=(10000 5000 20000 10000 1000 100 50 20 10 20 10 10 10 2 1 1)
+
+flow_size_list=(1 2 3 4 5 6 7 8 9 10 20 30 40 50 60 70 80 90 100)
+srcip_num_list=(10000 10000 10000 10000 10000 10000 10000 10000 10000 10000 1000 1000 1000 1000 1000 1000 1000 1000 1000)
+dstip_num_list=(10000 5000 3333 2500 2000 1666 1429 1250 1111 1000 5000 3333 2500 2000 1666 1429 1250 1111 1000)
+
 
 i=0
 ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-vsctl --no-wait set Open_vSwitch . other_config:hw-offload=true"
 ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-ofctl del-flows ovsdpdk"
 ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-ctl restart --system-id=random"
 ssh ubuntu@10.15.198.148 "cd ~/software/FastNIC/auto_run/ && ./myovs_rule_install2.sh "
-for test in {0..15}
+for test in {0..18}
 do
     flow_size=${flow_size_list[$test]}
     srcip_num=${srcip_num_list[$test]}
@@ -71,7 +76,7 @@ ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-vsctl --no-wait set Open_vSwitch . othe
 ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-ofctl del-flows ovsdpdk"
 ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-ctl restart --system-id=random"
 ssh ubuntu@10.15.198.148 "cd ~/software/FastNIC/auto_run/ && ./myovs_rule_install2.sh "
-for test in {0..15}
+for test in {0..18}
 do
     flow_size=${flow_size_list[$test]}
     srcip_num=${srcip_num_list[$test]}
