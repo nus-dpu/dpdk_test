@@ -1,5 +1,6 @@
 file=pkt_send_mul_auto_sta5_1
 remotefile=pkt_rcv_mul_auto_sta3
+lab=lab_2
 
 line="bf2"
 # line="cx5"
@@ -11,7 +12,7 @@ then
     password="123456"
 elif [[ ${user} == "qyn" ]]
 then
-    run_path="/home/qyn/software/FastNIC/lab_all/lab_1"
+    run_path="/home/qyn/software/FastNIC/lab_all/${lab}"
     password="nesc77qq"
 fi
 
@@ -22,10 +23,9 @@ test_time_rcv=50
 test_time_send=30
 
 flow_num_list=(10 100000)
+cir_time=${#flow_num_list[@]}
 
-i=0
-
-for test in {0..15}
+for ((i=0; i<$cir_time; i++))
 do
     flow_num=${flow_num_list[$test]}
 
