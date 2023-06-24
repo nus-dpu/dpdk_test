@@ -19,15 +19,19 @@ fi
 
 core_id="0"
 pkt_len=-1
+flow_size=-1
+srcip_num=-1
+dstip_num=-1
 test_time_rcv=50
 test_time_send=30
 
+# flow_num_list=(10 100 1000 10000 20000 30000 40000 50000 60000 70000 80000 90000 100000)
 flow_num_list=(10 100000)
 cir_time=${#flow_num_list[@]}
 
 for ((i=0; i<$cir_time; i++))
 do
-    flow_num=${flow_num_list[$test]}
+    flow_num=${flow_num_list[$i]}
 
     # echo "expect remote_bf2_config.expect $off_thre"
     # expect remote_bf2_config.expect $off_thre
@@ -39,11 +43,9 @@ do
     nohup expect remote_run_sta_cx4.expect $run_path $user $password $remotefile $line "$rcv_run_para" >> ./lab_results/log/remote.out 2>&1 &
     sleep 8s
 
-    echo ./start_sta.sh $file $line 150 $core_id $run_path "$send_run_para"
+    echo ./start_sta.sh $file $line 150 $core_id $run_path \"$send_run_para\"
     ./start_sta.sh $file $line 150 $core_id $run_path "$send_run_para" #149,bf2tocx4
     sleep 30s
-
-    ((i++))
 
     mkdir ./lab_results/${file}/send_$i
     mv ./lab_results/${file}/*.csv ./lab_results/${file}/send_$i/

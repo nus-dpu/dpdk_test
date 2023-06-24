@@ -301,7 +301,7 @@ static void lcore_main(uint32_t lcore_id)
     printf("Core %u forwarding packets. [Ctrl+C to quit]\n", rte_lcore_id());
     fflush(stdout);
 
-    while (!force_quit && record_count < MAX_RECORD_COUNT) {
+    while (!force_quit && record_count < MAX_RECORD_COUNT && pkt_count < PKTS_NUM) {
         for (i = 0; i < lconf->n_rx_queue; i++){
             #ifdef PCAP_ENABLE
             rte_pktmbuf_alloc_bulk(pktmbuf_pool[queue_id], 
@@ -310,7 +310,7 @@ static void lcore_main(uint32_t lcore_id)
             #endif
             for (j = 0; j < BURST_SIZE; j++){
                 struct flow flow_id;
-                flow_id.src_ip = SRC_IP_PREFIX + (uint32_t)(pkt_count % FLOW_NUM) ;
+                flow_id.src_ip = (uint32_t)(SRC_IP_PREFIX + (pkt_count % FLOW_NUM)) ;
                 flow_id.dst_ip = DEST_IP_PREFIX;
                 flow_id.src_port = 1234;
                 flow_id.dst_port = 4321;
@@ -329,9 +329,9 @@ static void lcore_main(uint32_t lcore_id)
                 txB[j] = bufs_tx[j]->data_len;
 
                 pkt_count++;
-                if(unlikely(pkt_count == FLOW_NUM)){
-                    pkt_count = 0;
-                }
+                // if(unlikely(pkt_count == FLOW_NUM)){
+                //     pkt_count = 0;
+                // }
             }
 
             // Send the packet batch
