@@ -59,55 +59,22 @@ get_highest_one_position() {
 sudo /home/ubuntu/software/ovs_all/ovs_install/usr/bin/ovs-ofctl del-flows ovsdpdk
 echo "finish del"
 
-O_CIRCLE_NUM=10
-I_CIRCLE_NUM=10
+O_CIRCLE_NUM=1
+I_CIRCLE_NUM=3
+TABLE_NUM=2
 for((i=0;i<$O_CIRCLE_NUM;i++));
 do
   rm rule_$i.txt
   echo "del rule_$i.txt"
-  for((j=0;j<I_CIRCLE_NUM;j++));
+  for((j=0;j<$I_CIRCLE_NUM;j++));
   do
     ip=$(($ip_prefix+$j+$i*$I_CIRCLE_NUM))
+    for((k=0;k<$TABLE_NUM-1;K++))
+    do
+      echo "table=$k,ip,in_port=dpdk_p0hpf,ip_src=$ip_dot,actions=resubmit(,$(($k + 1)))" >> rule_$i.txt
+    done
+    echo "table=$TABLE_NUM,ip,in_port=dpdk_p0hpf,ip_src=$ip_dot,actions=output:dpdk_p0" >> rule_$i.txt
 
-    if [[ ${i} == 0 && ${j} == 0 ]]
-    then
-      result=$(get_highest_one_position $(($O_CIRCLE_NUM * $I_CIRCLE_NUM)))
-      rule_wc=$((32-$result))
-      for((k=32;k>=$rule_wc;k--));
-      do
-        ip_dot=`num2ip $ip`
-        table=$((32-$k))
-        if [[ ${k} == 32 ]]
-        then
-          actions="output:dpdk_p0"
-          echo "table=$table,ip,in_port=dpdk_p0hpf,ip_src=$ip_dot/$k,priority=$k,actions=${actions}" >> rule_$i.txt
-        else
-          actions="resubmit(,$((${table} - 1)))"
-          echo "table=$table,ip,in_port=dpdk_p0hpf,ip_src=$ip_dot/$k,priority=$k,actions=${actions}" >> rule_$i.txt
-        fi
-      done
-    else
-      result=$(get_last_one_position $ip)
-      rule_wc=$((32-$result))
-      for((k=32;k>=$rule_wc;k--));
-      do
-        ip_dot=`num2ip $ip`
-        table=$((32-$k))
-        if [[ ${k} == 32 ]]
-        then
-          actions="output:dpdk_p0"
-          echo "table=$table,ip,in_port=dpdk_p0hpf,ip_src=$ip_dot/$k,priority=$k,actions=${actions}" >> rule_$i.txt
-        else
-          actions="resubmit(,$((${table} - 1)))"
-          echo "table=$table,ip,in_port=dpdk_p0hpf,ip_src=$ip_dot/$k,priority=$k,actions=${actions}" >> rule_$i.txt
-        fi
-      done
-    fi
-
-    # if [[ $(($j % 1000)) == 0 ]];
-    # then
-    #   echo $ip_dot
-    # fi
   done
   sudo /home/ubuntu/software/ovs_all/ovs_install/usr/bin/ovs-ofctl add-flows ovsdpdk rule_$i.txt
   echo "finish add $(($i*$I_CIRCLE_NUM)) - $((($i+1)*$I_CIRCLE_NUM-1))"
