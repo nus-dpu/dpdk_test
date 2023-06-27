@@ -90,7 +90,6 @@ do
     else
       result=$(get_last_one_position $ip)
       rule_wc=$((32-$result))
-      echo $ip, $(($j+$i*$I_CIRCLE_NUM)), $result, $rule_wc
       for((k=32;k>=$rule_wc;k--));
       do
         ip_dot=`num2ip $ip`
