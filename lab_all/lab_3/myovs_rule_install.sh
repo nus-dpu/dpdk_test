@@ -56,7 +56,6 @@ get_highest_one_position() {
   echo $position
 }
 
-sudo ovs-ofctl del-flows ovsdpdk
 sudo /home/ubuntu/software/ovs_all/ovs_install/usr/bin/ovs-ofctl del-flows ovsdpdk
 echo "finish del"
 
