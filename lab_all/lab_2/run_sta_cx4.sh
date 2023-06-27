@@ -25,16 +25,15 @@ dstip_num=-1
 test_time_rcv=50
 test_time_send=30
 
-# flow_num_list=(10 100 1000 10000 20000 30000 40000 50000 60000 70000 80000 90000 100000)
-flow_num_list=(10 100000)
+flow_num_list=(10 100 1000 10000 20000 30000 40000 50000 60000 70000 80000 90000 100000)
+# flow_num_list=(10 100000 1000000)
 cir_time=${#flow_num_list[@]}
 
 for ((i=0; i<$cir_time; i++))
 do
     flow_num=${flow_num_list[$i]}
-
-    # echo "expect remote_bf2_config.expect $off_thre"
-    # expect remote_bf2_config.expect $off_thre
+    echo "expect remote_bf2_config.expect"
+    expect remote_bf2_config.expect
 
     send_run_para="flow_num $flow_num pkt_len $pkt_len flow_size $flow_size test_time $test_time_send srcip_num $srcip_num dstip_num $dstip_num"
     rcv_run_para="flow_num $flow_num pkt_len 64 flow_size $flow_size test_time $test_time_rcv srcip_num $srcip_num dstip_num $dstip_num"
