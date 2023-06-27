@@ -69,7 +69,8 @@ do
   for((j=0;j<$I_CIRCLE_NUM;j++));
   do
     ip=$(($ip_prefix+$j+$i*$I_CIRCLE_NUM))
-    for((k=0;k<$TABLE_NUM-1;K++))
+    ip_dot=`num2ip $ip`
+    for((k=0;k<$TABLE_NUM-1;k++))
     do
       echo "table=$k,ip,in_port=dpdk_p0hpf,ip_src=$ip_dot,actions=resubmit(,$(($k + 1)))" >> rule_$i.txt
     done
