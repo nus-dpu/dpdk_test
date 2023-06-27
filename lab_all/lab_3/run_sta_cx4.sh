@@ -1,6 +1,6 @@
 file=pkt_send_mul_auto_sta5_1
 remotefile=pkt_rcv_mul_auto_sta3
-lab=lab_2
+lab=lab_3
 
 line="bf2"
 # line="cx5"
