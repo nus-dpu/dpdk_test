@@ -74,7 +74,7 @@ do
     do
       echo "table=$k,ip,in_port=dpdk_p0hpf,ip_src=$ip_dot,actions=resubmit(,$(($k + 1)))" >> rule_$i.txt
     done
-    echo "table=$TABLE_NUM,ip,in_port=dpdk_p0hpf,ip_src=$ip_dot,actions=output:dpdk_p0" >> rule_$i.txt
+    echo "table=$(($TABLE_NUM-1)),ip,in_port=dpdk_p0hpf,ip_src=$ip_dot,actions=output:dpdk_p0" >> rule_$i.txt
 
   done
   sudo /home/ubuntu/software/ovs_all/ovs_install/usr/bin/ovs-ofctl add-flows ovsdpdk rule_$i.txt
