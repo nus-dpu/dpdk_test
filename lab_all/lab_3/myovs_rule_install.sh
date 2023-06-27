@@ -59,8 +59,8 @@ get_highest_one_position() {
 sudo /home/ubuntu/software/ovs_all/ovs_install/usr/bin/ovs-ofctl del-flows ovsdpdk
 echo "finish del"
 
-O_CIRCLE_NUM=20
-I_CIRCLE_NUM=5000
+O_CIRCLE_NUM=10
+I_CIRCLE_NUM=10
 for((i=0;i<$O_CIRCLE_NUM;i++));
 do
   rm rule_$i.txt
