@@ -25,8 +25,8 @@ dstip_num=-1
 test_time_rcv=50
 test_time_send=30
 
-# flow_num_list=(10 100 1000 10000 20000 30000 40000 50000 60000 70000 80000 90000 100000)
-flow_num_list=(10 20)
+flow_num_list=(10 100 1000 2000 3000 4000 5000 6000 7000 8000 9000 10000)
+# flow_num_list=(10 20)
 cir_time=${#flow_num_list[@]}
 
 for ((i=0; i<$cir_time; i++))
