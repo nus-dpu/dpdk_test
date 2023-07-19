@@ -3,7 +3,7 @@
 // #define FLOW_NUM 100000
 
 #define FLOW_NUM 100000
-#define FLOW_SIZE 10
+#define FLOW_SIZE 1000
 #define PKTS_NUM (FLOW_SIZE*FLOW_NUM)
 
 #define PKT_LEN 64

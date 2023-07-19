@@ -1,6 +1,6 @@
-#define PKTS_NUM 5000000
+#define PKTS_NUM 4
 
-#define FLOW_NUM 100
+#define FLOW_NUM 4
 #define PKT_LEN 64
-#define MAX_RECORD_COUNT 10
+#define MAX_RECORD_COUNT 300
 #define PROGRAM "pkt_send_mul_auto_sta4"

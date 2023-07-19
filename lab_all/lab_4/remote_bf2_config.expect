@@ -1,0 +1,25 @@
+#!/usr/bin/expect -f2
+set timeout -1
+
+set user ubuntu
+set ip 10.15.198.148
+spawn ssh $user@$ip
+
+expect "ubuntu@localhost"
+send "cd /home/ubuntu/software/ovs_all/myovs \r"
+
+expect "ubuntu@localhost"
+send "sudo ~/bin/ovs-ctl restart --system-id=random \r"
+
+expect "ubuntu@localhost"
+send " cd /home/ubuntu/software/FastNIC/lab_all/lab_3 \r"
+
+expect "ubuntu@localhost"
+send " ./myovs_rule_install.sh \r"
+
+expect "ubuntu@localhost" 
+send "exit\r" 
+
+expect eof
+
+

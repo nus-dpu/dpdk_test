@@ -1,6 +1,6 @@
-#define FLOW_SIZE 10
-#define SRC_IP_NUM 10000
-#define DST_IP_NUM 20000
+#define FLOW_SIZE 50000000
+#define SRC_IP_NUM 2
+#define DST_IP_NUM 1
 #define FLOW_NUM (SRC_IP_NUM*DST_IP_NUM)
 #define PKTS_NUM (FLOW_SIZE*SRC_IP_NUM*DST_IP_NUM)
 

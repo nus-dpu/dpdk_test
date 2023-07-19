@@ -22,11 +22,13 @@ pkt_len=-1
 flow_size=-1
 srcip_num=-1
 dstip_num=-1
-test_time_rcv=50
-test_time_send=30
+# test_time_rcv=80
+# test_time_send=60
+test_time_rcv=80
+test_time_send=60
 
 # flow_num_list=(10 100 1000 2000 3000 4000 5000 6000 7000 8000 9000 10000)
-flow_num_list=(10000 11000 12000 13000 14000 15000 16000 17000 18000 19000 20000)
+flow_num_list=(10 100 1000 2000 3000 4000 5000 6000 7000 8000 9000 10000 11000 12000 13000 14000 15000 16000 17000 18000 19000 20000 30000 40000 50000 60000 70000 80000 90000)
 # flow_num_list=(10 20)
 cir_time=${#flow_num_list[@]}
 
