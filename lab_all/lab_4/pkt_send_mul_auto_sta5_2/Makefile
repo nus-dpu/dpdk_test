@@ -2,10 +2,10 @@
 # Copyright(c) 2010-2014 Intel Corporation
 
 # binary name
-APP = pkt_send_mul_auto_sta5_1
+APP = pkt_send_mul_auto_sta5_2
 
 # all source are stored in SRCS-y
-SRCS-y := pkt_send_mul_auto_sta5_1.c
+SRCS-y := pkt_send_mul_auto_sta5_2.c
 
 PKGCONF ?= pkg-config
 
