@@ -61,7 +61,7 @@ do
         mkdir ./lab_results/ovslog/log_$i
         scp ubuntu@10.15.198.148:$ovsfile_path/*.csv $run_path/lab_results/ovslog/log_$i
         ssh ubuntu@10.15.198.148 "cd $ovsfile_path && rm -f ./*.csv"
-        i++
+        ((i++))
     done
 done
 
