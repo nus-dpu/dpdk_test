@@ -27,7 +27,7 @@ dstip_num=-1
 test_time_rcv=80
 test_time_send=60
 
-core_id="0"
+i=0
 for off_thre in {1,2,3,4,5,7,10,30}
 # for core_id in {18,18-19,18-21,18-23,18-25,18-27,18-29,18-31,18-33,18-35}
 # for core_id in {"0-31","0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30","0,2,4,6,8,10,12,14","0,2,4,6","0,2"}
@@ -61,6 +61,7 @@ do
         mkdir ./lab_results/ovslog/log_$i
         scp ubuntu@10.15.198.148:$ovsfile_path/*.csv $run_path/lab_results/ovslog/log_$i
         ssh ubuntu@10.15.198.148 "cd $ovsfile_path && rm -f ./*.csv"
+        i++
     done
 done
 
