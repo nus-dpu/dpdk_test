@@ -29,3 +29,8 @@ pkt_send_mul_auto_sta5_1
   change function:
     1.generate x flows with different "x" src_ip
     2.send x flows with t packets (total x*t packets)
+
+pkt_send_mul_auto_sta5_1
+  based on pkt_send_mul_auto_sta4/5_2
+  change function:
+    1.generate x flows with different "x" src_ip

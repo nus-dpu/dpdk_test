@@ -1,4 +1,4 @@
-file=pkt_send_mul_auto_sta5_1
+file=pkt_send_mul_auto_sta5_2
 remotefile=pkt_rcv_mul_auto_sta3
 lab=lab_4
 
