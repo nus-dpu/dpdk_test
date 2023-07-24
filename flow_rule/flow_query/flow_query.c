@@ -92,7 +92,7 @@ generate_flow_rule(double *time_list, struct rte_flow ** flows){
 		flow = generate_ipv4_flow(port_id, 0, SRC_IP, FULL_MASK, 
 		                          DEST_IP_PREFIX + i, FULL_MASK, 
 								  &error);
-		double add_time=(double)(rte_rdtsc() - start) / rte_get_timer_hz();
+		double add_time=(double)(rte_rdtsc() - start);
 		time_list[i] = add_time;
 		flows[i] = flow;
 		if (unlikely(!flow)) {
@@ -201,10 +201,11 @@ static int
 data_write(double *time_list_add, double *time_list_delete){
 	FILE *fp;
 	int i;
+	uint64_t hz = rte_get_timer_hz();
 
 	if (unlikely(access(DATA_FILE, 0) != 0)){
         fp = fopen(DATA_FILE, "a+");
-        fprintf(fp, "index,add_time,del_time\r\n");
+        fprintf(fp, "index,add_cycle,del_cycle,cpu_hz\r\n");
     }else{
         fp = fopen(DATA_FILE, "a+");
     }
@@ -212,7 +213,7 @@ data_write(double *time_list_add, double *time_list_delete){
 		printf("failed to open the file\n");
 	}
 	for(i = 0 ; i < FLOW_NUM; i++){
-		fprintf(fp,"%d,%lf,%lf\r\n",i+1, time_list_add[i],time_list_delete[i]);
+		fprintf(fp,"%d,%lf,%lf,%ld\r\n",i+1, time_list_add[i], time_list_delete[i], hz);
 	}
 	fclose(fp);
 	printf("finish file writing\n");
