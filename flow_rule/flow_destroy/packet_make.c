@@ -2,7 +2,7 @@
 
 #define PKT_LEN 64
 
-struct rte_mbuf *make_testpkt(struct rte_mempool *pktmbuf_pool);
+struct rte_mbuf *make_testpkt(struct rte_mempool *pktmbuf_pool, uint32_t src_ip, uint32_t dst_ip, uint16_t udp_src_port, uint16_t udp_dst_port);
 
 static uint32_t reversebytes_uint32t(uint32_t value){
     return (value & 0x000000FFU) << 24 | (value & 0x0000FF00U) << 8 | 
@@ -13,13 +13,13 @@ static void
 fill_ethernet_header(struct rte_ether_hdr *eth_hdr, const struct rte_ether_addr *src_mac, const struct rte_ether_addr *dst_mac) {
 	struct rte_ether_addr s_addr = *src_mac; 
 	struct rte_ether_addr d_addr = *dst_mac;
-	eth_hdr->s_addr =s_addr;
-	eth_hdr->d_addr =d_addr;
+	eth_hdr->dst_addr =s_addr;
+	eth_hdr->dst_addr =d_addr;
 	eth_hdr->ether_type = rte_cpu_to_be_16(0x0800);
 }
 
 static void
-fill_ipv4_header(struct rte_ipv4_hdr *ipv4_hdr) {
+fill_ipv4_header(struct rte_ipv4_hdr *ipv4_hdr, uint32_t src_ip, uint32_t dst_ip) {
 	ipv4_hdr->version_ihl = (4 << 4) + 5; // ipv4, length 5 (*4)
 	ipv4_hdr->type_of_service = 0; // No Diffserv
 	ipv4_hdr->total_length = rte_cpu_to_be_16(PKT_LEN); // tcp 20
@@ -29,18 +29,21 @@ fill_ipv4_header(struct rte_ipv4_hdr *ipv4_hdr) {
 	ipv4_hdr->next_proto_id = 17; // udp
 	ipv4_hdr->hdr_checksum = rte_cpu_to_be_16(0x0);
 
-    uint32_t src_ip = inet_addr("192.168.200.2");// cx4
-    uint32_t dst_ip = inet_addr("192.168.200.1");// bf2
-	ipv4_hdr->src_addr = rte_cpu_to_be_32(reversebytes_uint32t(src_ip)); 
-	ipv4_hdr->dst_addr = rte_cpu_to_be_32(reversebytes_uint32t(dst_ip)); 
+    // uint32_t src_ip = inet_addr("192.168.200.2");// cx4
+    // uint32_t dst_ip = inet_addr("192.168.200.1");// bf2
+	// ipv4_hdr->src_addr = rte_cpu_to_be_32(reversebytes_uint32t(src_ip)); 
+	// ipv4_hdr->dst_addr = rte_cpu_to_be_32(reversebytes_uint32t(dst_ip));
+	ipv4_hdr->src_addr = rte_cpu_to_be_32(src_ip); 
+	ipv4_hdr->dst_addr = rte_cpu_to_be_32(dst_ip); 
 
 	ipv4_hdr->hdr_checksum = rte_cpu_to_be_16(rte_ipv4_cksum(ipv4_hdr));
 }
 
 static void
-fill_udp_header(struct rte_udp_hdr *udp_hdr, struct rte_ipv4_hdr *ipv4_hdr) {
-	udp_hdr->src_port = rte_cpu_to_be_16(0x162E);
-    udp_hdr->dst_port = rte_cpu_to_be_16(0x1503);
+fill_udp_header(struct rte_udp_hdr *udp_hdr, struct rte_ipv4_hdr *ipv4_hdr, 
+                uint16_t udp_src_port, uint16_t udp_dst_port) {
+	udp_hdr->src_port = rte_cpu_to_be_16(udp_src_port);
+    udp_hdr->dst_port = rte_cpu_to_be_16(udp_dst_port);
 	udp_hdr->dgram_len = rte_cpu_to_be_16(PKT_LEN - sizeof(struct rte_ipv4_hdr));
     udp_hdr->dgram_cksum = rte_cpu_to_be_16(0x0);
 	
@@ -62,7 +65,8 @@ fill_tcp_header(struct rte_tcp_hdr *tcp_hdr, struct rte_ipv4_hdr *ipv4_hdr) {
 	tcp_hdr->cksum = rte_cpu_to_be_16(rte_ipv4_udptcp_cksum(ipv4_hdr, tcp_hdr));
 }
 
-struct rte_mbuf *make_testpkt(struct rte_mempool *pktmbuf_pool)
+struct rte_mbuf *make_testpkt(struct rte_mempool *pktmbuf_pool, uint32_t src_ip, uint32_t dst_ip, 
+							  uint16_t udp_src_port, uint16_t udp_dst_port)
 {
     struct rte_mbuf *mp = rte_pktmbuf_alloc(pktmbuf_pool);
 
@@ -85,7 +89,7 @@ struct rte_mbuf *make_testpkt(struct rte_mempool *pktmbuf_pool)
     curr_ofs += sizeof(struct rte_ether_hdr);
 
     struct rte_ipv4_hdr *ipv4_h = rte_pktmbuf_mtod_offset(mp, struct rte_ipv4_hdr *, curr_ofs);
-	fill_ipv4_header(ipv4_h);
+	fill_ipv4_header(ipv4_h, src_ip, dst_ip);
     curr_ofs += sizeof(struct rte_ipv4_hdr);
 
     // struct rte_tcp_hdr *tcp_h = rte_pktmbuf_mtod_offset(mp, struct rte_tcp_hdr *, curr_ofs);
@@ -93,7 +97,7 @@ struct rte_mbuf *make_testpkt(struct rte_mempool *pktmbuf_pool)
     // curr_ofs += sizeof(struct rte_tcp_hdr);
 
     struct rte_udp_hdr *udp_h = rte_pktmbuf_mtod_offset(mp, struct rte_udp_hdr *, curr_ofs);
-	fill_udp_header(udp_h, ipv4_h);
+	fill_udp_header(udp_h, ipv4_h, udp_src_port, udp_dst_port);
     curr_ofs += sizeof(struct rte_udp_hdr);
     
     // struct payload * payload_data= rte_pktmbuf_mtod_offset(mp, struct payload *, curr_ofs);

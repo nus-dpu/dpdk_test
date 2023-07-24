@@ -48,7 +48,14 @@
 #define EMPTY_MASK 0x0 /* empty mask */
 
 #define FLOW_NUM 100000
+#define PKT_NUM 10
 #define BURST_SIZE 32
+
+#define CHECK_INTERVAL 1000  /* 100ms */
+#define MAX_REPEAT_TIMES 90  /* 9s (90 * 100ms) in total */
+
+#define FILE_NAME "flow_destroy"
+#define DATA_FILE "../lab_results/" FILE_NAME "/run_time.csv"
 
 struct lcore_configuration {
     uint32_t vid; // virtual core id
@@ -69,107 +76,129 @@ struct rte_flow *flow;
 struct lcore_configuration lcore_conf[MAX_LCORES];
 struct rte_mempool *pktmbuf_pool[MAX_LCORES];
 
-/* Main_loop for flow filtering. 8< */
-static int
-packet_send_main_loop(void)
-{
+static uint32_t
+generate_flow_rule(double *time_list, struct rte_flow ** flows){
 	struct rte_flow_error error;
-	uint16_t nb_tx;
-	// uint64_t total_tx, length, loop_count;
-	uint16_t i;
-	int ret;
-	struct rte_mbuf *bufs_tx[BURST_SIZE];
-
-	/* Reading the packets from all queues. 8< */
-	while (!force_quit) {
-        for(i = 0; i < BURST_SIZE; i++){
-            bufs_tx[i] = make_testpkt(mbuf_pool);
-			if (bufs_tx[i] == NULL)
-			    printf("Error: failed to allocate packet buffer\n");
-        }
-        // Transmit packet
-        nb_tx = rte_eth_tx_burst(port_id, 0, bufs_tx, BURST_SIZE);
-        // total_tx += nb_tx;
-        // length += (bufs_tx[0]->data_len*nb_tx);
-		// loop_count++;
-        if (nb_tx < BURST_SIZE){
-            rte_pktmbuf_free_bulk(bufs_tx + nb_tx, BURST_SIZE - nb_tx);
-        }
-	}
-	/* >8 End of reading the packets from all queues. */
-
-	/* closing and releasing resources */
-	rte_flow_flush(port_id, &error);
-	ret = rte_eth_dev_stop(port_id);
-	if (ret < 0)
-		printf("Failed to stop port %u: %s",
-		       port_id, rte_strerror(-ret));
-	rte_eth_dev_close(port_id);
-	return ret;
-}
-/* >8 End of main_loop for flow filtering. */
-
-#define CHECK_INTERVAL 1000  /* 100ms */
-#define MAX_REPEAT_TIMES 90  /* 9s (90 * 100ms) in total */
-
-static void lcore_main(uint32_t lcore_id){
-	struct rte_flow_error error;
-	FILE *fp;
-	double *time_list = NULL;
-	time_list = (double *)malloc(sizeof(double)*FLOW_NUM);
-	if (time_list == NULL){
-		printf("memory for time_list allocate fail\n");
-	}
-	
-	/* Create flow for send packet with. 8< */    
-	int i = 0;
-	do{
+	int i;
+	uint32_t flow_num = 0;
+	for(i = 0; i <  FLOW_NUM; i++){
 		uint64_t start = rte_rdtsc();
-		flow = generate_ipv4_udp_flow(port_id, SRC_IP, FULL_MASK, 
-		                                       DEST_IP_PREFIX + i, FULL_MASK, 
-											   1234, 5678,
-											   &error);
-		double add_time=(double)(rte_rdtsc() - start) / rte_get_timer_hz();
+		// flow = generate_ipv4_udp_flow(port_id, SRC_IP, FULL_MASK, 
+		//                               DEST_IP_PREFIX + i, FULL_MASK, 
+		// 							  1234, 5678,
+		// 							  &error);
+		flow = generate_ipv4_flow(port_id, 0, SRC_IP, FULL_MASK, 
+		                          DEST_IP_PREFIX + i, FULL_MASK, 
+								  &error);
+		double add_time=(double)(rte_rdtsc() - start);
 		time_list[i] = add_time;
-		i++;
+		flows[i] = flow;
 		if (unlikely(!flow)) {
 			printf("Flow can't be created %d message: %s\n",
 			       error.type,
 			       error.message ? error.message : "(no stated reason)");
+			break;
 		}
 		else{
 			printf("already add %d flows, add time is %lf\n", i+1, add_time);
+			flow_num++;
 		}
-	} while (likely(flow));
+	} 
+	return flow_num;
+}
 
-    // int flownum = i;
-	// for(i = 0 ; i < flownum; i++){
-	// 	uint64_t start = rte_rdtsc();
-	// 	rte_flow_destroy(port_id, &flows[i], &error);
-	// 	double delete_time=(double)(rte_rdtsc() - start) / rte_get_timer_hz();
-	// }
+static int
+delete_flow_rule(double *time_list, struct rte_flow ** flows, uint32_t flow_num){
+	struct rte_flow_error error;
+	int i;
+	for(i = 0 ; i < flow_num; i++){
+		int32_t ret;
+		uint64_t start = rte_rdtsc();
+		ret = rte_flow_destroy(port_id, flows[i], &error);
+		double delete_time=(double)(rte_rdtsc() - start);
+		time_list[i] = delete_time;
+		if (ret) {
+			printf("Failed to destroy flow for port %u, err msg: %s\n", port_id, error.message);
+		}
+	}
+	return 0;
+}
 
-	if (unlikely(access("../lab_results/flow_create_test2/run_time.csv", 0) != 0)){
-        fp = fopen("../lab_results/flow_create_test2/run_time.csv", "a+");
-        fprintf(fp, "index,run_time\r\n");
-    }else{
-        fp = fopen("../lab_results/flow_create_test2/run_time.csv", "a+");
-    }
-	if( fp == NULL ){
-		printf("failed to open the file\n");
+static int
+packet_send_main_loop(uint32_t lcore_id)
+{
+	struct rte_flow_error error;
+	int ret;
+    struct lcore_configuration *lconf = &lcore_conf[lcore_id];
+
+	uint16_t nb_tx;
+	struct rte_mbuf *bufs_tx[BURST_SIZE];
+	struct rte_mbuf *bufs_rx[BURST_SIZE];
+	uint64_t total_tx = 0;
+	uint64_t total_rx = 0;
+	// uint64_t total_tx, length, loop_count;
+
+	/* Reading the packets from all queues. 8< */
+	printf("start send and receive packets\n");
+	while (!force_quit && total_tx < PKT_NUM) {
+		uint16_t i, j;
+		for (i = 0; i < lconf->n_rx_queue; i++){
+			// Transmit packet
+			for(j = 0; j < BURST_SIZE; j++){
+				bufs_tx[j] = make_testpkt(pktmbuf_pool[lconf->vid], SRC_IP, DEST_IP_PREFIX, 1234, 5678);
+				if (bufs_tx[j] == NULL)
+					printf("Error: failed to allocate packet buffer\n");
+			}
+			nb_tx = rte_eth_tx_burst(lconf->port, lconf->rx_queue_list[0], bufs_tx, BURST_SIZE);
+			total_tx += nb_tx;
+			// length += (bufs_tx[0]->data_len*nb_tx);
+			// loop_count++;
+			if (nb_tx < BURST_SIZE){
+				rte_pktmbuf_free_bulk(bufs_tx + nb_tx, BURST_SIZE - nb_tx);
+			}
+
+			//receive packet
+			const uint16_t nb_rx = rte_eth_rx_burst(lconf->port, lconf->rx_queue_list[i], bufs_rx, BURST_SIZE);
+            if(nb_rx != 0){
+                total_rx += nb_rx;
+                // total_rxB += (bufs[0]->data_len*nb_rx);
+                rte_pktmbuf_free_bulk(bufs_rx, nb_rx);
+            }
+
+		}
 	}
-	for(i = 0 ; i < FLOW_NUM; i++){
-		fprintf(fp,"%d,%lf\r\n",i+1, time_list[i]);
-	}
-	fclose(fp);
-	printf("finish file writing\n");
+	/* >8 End of reading the packets from all queues. */
+    printf("successfully send %ld packets and receive %ld packets\n", total_tx, total_rx);
+	return ret;
 }
 
 static int
 launch_one_lcore(__attribute__((unused)) void *arg){
     uint32_t lcore_id = rte_lcore_id();
-	lcore_main(lcore_id);
+	packet_send_main_loop(lcore_id);
 	return 0;
+}
+
+static int
+data_write(double *time_list_add, double *time_list_delete){
+	int i;
+	uint64_t hz = rte_get_timer_hz();
+	FILE *fp;
+
+	if (unlikely(access(DATA_FILE, 0) != 0)){
+        fp = fopen(DATA_FILE, "a+");
+        fprintf(fp, "index,add_cycle,del_cycle,cpu_hz\r\n");
+    }else{
+        fp = fopen(DATA_FILE, "a+");
+    }
+	if( fp == NULL ){
+		printf("failed to open the file\n");
+	}
+	for(i = 0 ; i < FLOW_NUM; i++){
+		fprintf(fp,"%d,%lf,%lf,%ld\r\n",i+1, time_list_add[i],time_list_delete[i], hz);
+	}
+	fclose(fp);
+	printf("finish file writing\n");
 }
 
 static void
@@ -398,6 +427,20 @@ main(int argc, char **argv)
 	/* Initializes all the ports using the user defined init_port(). 8< */
 	init_port(&n_lcores);
 	/* >8 End of Initializing the ports using user defined init_port(). */
+	
+	double *time_list_add = NULL;
+	double *time_list_delete = NULL;
+	time_list_add = (double *)malloc(sizeof(double)*FLOW_NUM);
+	time_list_delete = (double *)malloc(sizeof(double)*FLOW_NUM);
+	if (time_list_add == NULL){
+		printf("memory for time_list_add allocate fail\n");
+	}
+	if (time_list_delete == NULL){
+		printf("memory for time_list_delete allocate fail\n");
+	}
+	struct rte_flow ** flows = (struct rte_flow **) malloc(FLOW_NUM * sizeof(struct rte_flow *));
+
+	uint32_t flow_num = generate_flow_rule(time_list_add, flows);
 
     rte_eal_mp_remote_launch((lcore_function_t *)launch_one_lcore, NULL, CALL_MAIN);
     RTE_LCORE_FOREACH_WORKER(lcore_id){
@@ -406,6 +449,13 @@ main(int argc, char **argv)
             break;
         } 
     }
+
+	delete_flow_rule(time_list_delete, flows, flow_num);
+	data_write(time_list_add, time_list_delete);
+
+	free(time_list_add);
+	free(time_list_delete);
+	free(flows);
 
 	/* Launching main_loop(). 8< */
 	// ret = packet_send_main_loop();

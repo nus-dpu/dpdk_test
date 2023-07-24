@@ -3,7 +3,7 @@
  */
 
 #define IPV4_PATTERN_NUM      3
-#define IPV4_ACTION_NUM       2
+#define IPV4_ACTION_NUM       3
 
 #define IPV4_UDP_PATTERN_NUM  4
 #define IPV4_UDP_ACTION_NUM   3
@@ -57,6 +57,7 @@ generate_ipv4_flow(uint16_t port_id, uint16_t rx_q,
 	struct rte_flow_action action[IPV4_ACTION_NUM];
 	struct rte_flow *flow = NULL;
 	struct rte_flow_action_queue queue = { .index = rx_q };
+	struct rte_flow_action_count counter = { .id = 1 };
 	struct rte_flow_item_ipv4 ip_spec;
 	struct rte_flow_item_ipv4 ip_mask;
 	/* >8 End of declaring structs being used. */
@@ -76,7 +77,9 @@ generate_ipv4_flow(uint16_t port_id, uint16_t rx_q,
 	 */
 	action[0].type = RTE_FLOW_ACTION_TYPE_QUEUE;
 	action[0].conf = &queue;
-	action[1].type = RTE_FLOW_ACTION_TYPE_END;
+	action[1].type = RTE_FLOW_ACTION_TYPE_COUNT;
+	action[1].conf = &counter;
+	action[2].type = RTE_FLOW_ACTION_TYPE_END;
 
 	/*
 	 * set the first level of the pattern (ETH).
@@ -148,7 +151,9 @@ generate_ipv4_udp_flow(uint16_t port_id,
 	/* Set the rule attribute, only ingress packets will be checked. 8< */
 	memset(&attr, 0, sizeof(struct rte_flow_attr));
 	attr.priority = 0;
-	attr.egress = 1;
+	attr.egress = 0;
+	attr.ingress = 1;
+
 	/* >8 End of setting the rule attribute. */
 
 	/*
