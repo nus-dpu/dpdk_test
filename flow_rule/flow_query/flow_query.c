@@ -54,8 +54,9 @@
 
 #define CHECK_INTERVAL 1000  /* 100ms */
 #define MAX_REPEAT_TIMES 90  /* 9s (90 * 100ms) in total */
+#define FILE_NAME "flow_query"
 
-#define DATA_FILE "./run_time.csv"
+#define DATA_FILE "../lab_results/" FILE_NAME "/run_time.csv"
 
 struct lcore_configuration {
 	uint32_t core_id;

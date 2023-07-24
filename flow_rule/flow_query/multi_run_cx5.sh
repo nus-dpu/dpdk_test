@@ -1,5 +1,5 @@
 # run_path="/home/qyn/software/FastNIC"
-file_name="flow_destroy"
+file_name="flow_query"
 
 if [[ ! -d "../lab_results/${file_name}" ]]
 then
