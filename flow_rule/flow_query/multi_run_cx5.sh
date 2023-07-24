@@ -6,6 +6,7 @@ then
     mkdir ../lab_results/${file_name}
 fi
 
+rm ../lab_results/log/query_info.out
 rm -f ../lab_results/${file_name}/run_time*
 make
 
