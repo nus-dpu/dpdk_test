@@ -6,19 +6,19 @@ set password [lindex $argv 2]
 set file_name [lindex $argv 3] 
 set line [lindex $argv 4]
 set run_para [lindex $argv 5]
-set ip 10.15.198.149
+set ip 10.15.198.160
 spawn ssh $user@$ip
 
-expect "qyn@bf2" 
+expect "qyn@node1" 
 send "cd $run_path\r" 
 
-expect "qyn@bf2" 
+expect "qyn@node1" 
 send "./start_sta.sh $file_name $line 149 18-35 $run_path '$run_para'\r"
 expect {
     "*password*" { send "$password\r" }
 }
 
-expect "qyn@bf2" 
+expect "qyn@node1" 
 send "exit\r" 
 
 expect eof

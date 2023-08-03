@@ -32,8 +32,8 @@ do
         nohup expect remote_run_sta_cx4.expect $test_time_rcv $run_path $user $password $remotefile $line >> ./lab_results/log/remote.out 2>&1 &
         echo "nohup expect remote_run_sta_cx4.expect $test_time_rcv $run_path $user $password $remotefile $line >> ./lab_results/log/remote.out 2>&1 &"
         sleep 8s
-        echo "./start_sta.sh $file $line 150 $core_id $flow_num 64 $flow_size $test_time_send $run_path"
-        ./start_sta.sh $file $line 150 $core_id $flow_num 64 $flow_size $test_time_send $run_path #149,bf2tocx4
+        echo "./start_sta.sh $file $line 161 $core_id $flow_num 64 $flow_size $test_time_send $run_path"
+        ./start_sta.sh $file $line 161 $core_id $flow_num 64 $flow_size $test_time_send $run_path #149,bf2tocx4
         # ./start_sta.sh pkt_send_mul_auto_sta3 bf2 150 0 1000 64 100000 10 /home/qyn/software/FastNIC/lab_openloop
         # sudo ./build/pkt_send_mul_auto_sta3 -l 0,2 -a 0000:5e:00.0 -- --srcmac b8:83:03:82:a2:10 --dstmac 0c:42:a1:d8:10:84
         sleep 30s
@@ -43,13 +43,13 @@ do
         mkdir ./lab_results/${file}/send_$i
         mv ./lab_results/${file}/*.csv ./lab_results/${file}/send_$i/
         
-        ssh qyn@10.15.198.149 "cd $run_path && mkdir ./lab_results/${remotefile}/rcv_$i"
-        ssh qyn@10.15.198.149 "cd $run_path/lab_results/${remotefile}/ && mv *csv rcv_$i/"
+        ssh qyn@10.15.198.160 "cd $run_path && mkdir ./lab_results/${remotefile}/rcv_$i"
+        ssh qyn@10.15.198.160 "cd $run_path/lab_results/${remotefile}/ && mv *csv rcv_$i/"
        
         ovsfile_path="/home/ubuntu/software/FastNIC/lab_results/ovs_log"
         mkdir ./lab_results/ovslog/log_$i
-        scp ubuntu@10.15.198.148:$ovsfile_path/*.csv $run_path/lab_results/ovslog/log_$i
-        ssh ubuntu@10.15.198.148 "cd $ovsfile_path && rm -f ./*.csv"
+        scp -o ProxyJump=qyn@10.15.198.160 ubuntu@192.168.100.2:$ovsfile_path/*.csv $run_path/lab_results/ovslog/log_$i
+        ssh -A -t qyn@10.15.198.160 ssh ubuntu@192.168.100.2 "cd $ovsfile_path && rm -f ./*.csv"
     done
 done
 
