@@ -56,7 +56,7 @@ get_highest_one_position() {
   echo $position
 }
 
-sudo /home/ubuntu/software/ovs_all/ovs_install/usr/bin/ovs-ofctl del-flows ovsdpdk
+sudo /home/ubuntu/software/ovs_all/ovs_install/usr/bin/ovs-ofctl del-flows ovsdpdk1
 echo "finish del"
 
 O_CIRCLE_NUM=10
@@ -79,11 +79,11 @@ do
         table=$((32-$k))
         if [[ ${k} == 32 ]]
         then
-          actions="output:dpdk_p0"
-          echo "table=$table,ip,in_port=dpdk_p0hpf,ip_src=$ip_dot/$k,priority=$k,actions=${actions}" >> rule_$i.txt
+          actions="output:dpdk_p1"
+          echo "table=$table,ip,in_port=dpdk_pf1hpf,ip_src=$ip_dot/$k,priority=$k,actions=${actions}" >> rule_$i.txt
         else
           actions="resubmit(,$((${table} - 1)))"
-          echo "table=$table,ip,in_port=dpdk_p0hpf,ip_src=$ip_dot/$k,priority=$k,actions=${actions}" >> rule_$i.txt
+          echo "table=$table,ip,in_port=dpdk_pf1hpf,ip_src=$ip_dot/$k,priority=$k,actions=${actions}" >> rule_$i.txt
         fi
       done
     else
@@ -95,11 +95,11 @@ do
         table=$((32-$k))
         if [[ ${k} == 32 ]]
         then
-          actions="output:dpdk_p0"
-          echo "table=$table,ip,in_port=dpdk_p0hpf,ip_src=$ip_dot/$k,priority=$k,actions=${actions}" >> rule_$i.txt
+          actions="output:dpdk_p1"
+          echo "table=$table,ip,in_port=dpdk_pf1hpf,ip_src=$ip_dot/$k,priority=$k,actions=${actions}" >> rule_$i.txt
         else
           actions="resubmit(,$((${table} - 1)))"
-          echo "table=$table,ip,in_port=dpdk_p0hpf,ip_src=$ip_dot/$k,priority=$k,actions=${actions}" >> rule_$i.txt
+          echo "table=$table,ip,in_port=dpdk_pf1hpf,ip_src=$ip_dot/$k,priority=$k,actions=${actions}" >> rule_$i.txt
         fi
       done
     fi
@@ -109,6 +109,6 @@ do
     #   echo $ip_dot
     # fi
   done
-  sudo /home/ubuntu/software/ovs_all/ovs_install/usr/bin/ovs-ofctl add-flows ovsdpdk rule_$i.txt
+  sudo /home/ubuntu/software/ovs_all/ovs_install/usr/bin/ovs-ofctl add-flows ovsdpdk1 rule_$i.txt
   echo "finish add $(($i*$I_CIRCLE_NUM)) - $((($i+1)*$I_CIRCLE_NUM-1))"
 done

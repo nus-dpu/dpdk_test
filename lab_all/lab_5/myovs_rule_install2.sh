@@ -56,7 +56,7 @@ get_highest_one_position() {
   echo $position
 }
 
-sudo /home/ubuntu/software/ovs_all/ovs_install/usr/bin/ovs-ofctl del-flows ovsdpdk
+sudo /home/ubuntu/software/ovs_all/ovs_install/usr/bin/ovs-ofctl del-flows ovsdpdk1
 echo "finish del"
 
 O_CIRCLE_NUM=10
@@ -72,11 +72,11 @@ do
     ip_dot=`num2ip $ip`
     for((k=0;k<$TABLE_NUM-1;k++))
     do
-      echo "table=$k,ip,in_port=dpdk_p0hpf,ip_src=$ip_dot,actions=resubmit(,$(($k + 1)))" >> rule_$i.txt
+      echo "table=$k,ip,in_port=dpdk_pf1hpf,ip_src=$ip_dot,actions=resubmit(,$(($k + 1)))" >> rule_$i.txt
     done
-    echo "table=$(($TABLE_NUM-1)),ip,in_port=dpdk_p0hpf,ip_src=$ip_dot,actions=output:dpdk_p0" >> rule_$i.txt
+    echo "table=$(($TABLE_NUM-1)),ip,in_port=dpdk_pf1hpf,ip_src=$ip_dot,actions=output:dpdk_p1" >> rule_$i.txt
 
   done
-  sudo /home/ubuntu/software/ovs_all/ovs_install/usr/bin/ovs-ofctl add-flows ovsdpdk rule_$i.txt
+  sudo /home/ubuntu/software/ovs_all/ovs_install/usr/bin/ovs-ofctl add-flows ovsdpdk1 rule_$i.txt
   echo "finish add $(($i*$I_CIRCLE_NUM)) - $((($i+1)*$I_CIRCLE_NUM-1))"
 done

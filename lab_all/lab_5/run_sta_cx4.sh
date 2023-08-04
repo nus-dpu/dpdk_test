@@ -1,6 +1,6 @@
 file=pkt_send_mul_auto_sta4
 remotefile=pkt_rcv_mul_auto_sta3
-lab=lab_4
+lab=lab_5
 
 line="bf2"
 # line="cx5"
@@ -16,6 +16,10 @@ then
     password="nesc77qq"
 fi
 
+if [[ ! -d "../lab_results/log" ]]
+then
+    mkdir -p ../lab_results/log
+fi
 
 core_id="0"
 pkt_len=-1
@@ -36,8 +40,9 @@ do
     # for flow_num in {100,10000,50000,100000}
     for flow_num in {100,100000}
     do
-        echo "expect remote_bf2_config.expect $off_thre"
-        expect remote_bf2_config.expect $off_thre
+        # echo "expect remote_bf2_config.expect $off_thre"
+        # expect remote_bf2_config.expect $off_thre
+        ./remote_bf2_config.sh $off_thre
 
         send_run_para="flow_num $flow_num pkt_len $pkt_len flow_size $flow_size test_time $test_time_send srcip_num $srcip_num dstip_num $dstip_num"
         rcv_run_para="flow_num $flow_num pkt_len 64 flow_size $flow_size test_time $test_time_rcv srcip_num $srcip_num dstip_num $dstip_num"

@@ -26,7 +26,7 @@ function ip2num()
 }
 
 #sudo ovs-ofctl del-flows ovsdpdk
-sudo /home/ubuntu/software/ovs_all/ovs_install/usr/bin/ovs-ofctl del-flows ovsdpdk
+sudo /home/ubuntu/software/ovs_all/ovs_install/usr/bin/ovs-ofctl del-flows ovsdpdk1
 echo "finish del"
 
 O_CIRCLE_NUM=10
@@ -43,9 +43,9 @@ do
     then
       echo $ip_dot
     fi
-    echo "ip,in_port=dpdk_p0hpf,ip_src=$ip_dot,actions=output:dpdk_p0" >> rule_$i.txt
-    echo "ip,in_port=dpdk_p0,ip_src=$ip_dot,actions=output:dpdk_p0hpf" >> rule_$i.txt
+    echo "ip,in_port=dpdk_pf1hpf,ip_src=$ip_dot,actions=output:dpdk_p1" >> rule_$i.txt
+    echo "ip,in_port=dpdk_p1,ip_src=$ip_dot,actions=output:dpdk_pf1hpf" >> rule_$i.txt
   done
-  sudo /home/ubuntu/software/ovs_all/ovs_install/usr/bin/ovs-ofctl add-flows ovsdpdk rule_$i.txt
+  sudo /home/ubuntu/software/ovs_all/ovs_install/usr/bin/ovs-ofctl add-flows ovsdpdk1 rule_$i.txt
   echo "finish add $(($i*$I_CIRCLE_NUM)) - $((($i+1)*$I_CIRCLE_NUM-1))"
 done
