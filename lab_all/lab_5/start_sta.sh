@@ -2,11 +2,17 @@ file_name=$1
 line=$2
 host_name=$3
 core_id=$4
-flow_num=$5
-pkt_len=$6
-flow_size=$7
-test_time=$8 #run_time = test_time * 0.5s
-run_path=$9
+run_path=$5
+
+arr=($6)
+
+#read parameter
+for ((i=0; i<${#arr[@]}; i+=2)); do
+    key=${arr[$i]}
+    value=${arr[$i+1]}
+    eval "$key='$value'"
+    echo "$key=$value"
+done
 
 # determine nic, ip, mac
 if [[ $line == "bf2" && $host_name == 160 ]] #bf2-cx5
@@ -52,7 +58,7 @@ cd $run_path/$file_name/
 
 if [[ ! -d "../lab_results/${file_name}" ]]
 then
-    mkdir ../lab_results/${file_name}
+    mkdir -p ../lab_results/${file_name}
 fi
 
 echo "sudo ./build/$file_name -l ${core_id} -a ${src_pci} -- --srcmac ${src_mac} --dstmac ${dst_mac}"
@@ -72,6 +78,24 @@ then
     sed -i "s/#define PKT_LEN.*$/#define PKT_LEN ${pkt_len}/" para.h
     sed -i "s/#define MAX_RECORD_COUNT.*$/#define MAX_RECORD_COUNT ${test_time}/" para.h
     sed -i "s/#define FLOW_SIZE.*$/#define FLOW_SIZE ${flow_size}/" para.h
+    make clean
+    make
+    sudo ./build/$file_name -l ${core_id} -a ${src_pci} -- --srcmac ${src_mac} --dstmac ${dst_mac} 
+elif [[ ${file_name} == "pkt_send_mul_auto_sta4" || \
+        ${file_name} == "pkt_send_mul_auto_sta5_1" || \
+        ${file_name} == "pkt_send_mul_auto_sta5_2" ]]
+then
+    sed -i "s/#define FLOW_NUM.*$/#define FLOW_NUM ${flow_num}/" para.h
+    sed -i "s/#define MAX_RECORD_COUNT.*$/#define MAX_RECORD_COUNT ${test_time}/" para.h
+    make clean
+    make
+    sudo ./build/$file_name -l ${core_id} -a ${src_pci} -- --srcmac ${src_mac} --dstmac ${dst_mac} 
+elif [[ ${file_name} == "pkt_send_mul_auto_sta5" ]]
+then
+    sed -i "s/#define FLOW_SIZE.*$/#define FLOW_SIZE ${flow_size}/" para.h
+    sed -i "s/#define SRC_IP_NUM.*$/#define SRC_IP_NUM ${srcip_num}/" para.h
+    sed -i "s/#define DST_IP_NUM.*$/#define DST_IP_NUM ${dstip_num}/" para.h
+    sed -i "s/#define MAX_RECORD_COUNT.*$/#define MAX_RECORD_COUNT ${test_time}/" para.h
     make clean
     make
     sudo ./build/$file_name -l ${core_id} -a ${src_pci} -- --srcmac ${src_mac} --dstmac ${dst_mac} 

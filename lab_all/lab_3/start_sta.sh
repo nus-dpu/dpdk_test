@@ -22,7 +22,7 @@ then
     dst_mac="08:c0:eb:de:43:36"
 elif [[ $line == "bf2" && $host_name == 161 ]] #cx5-bf2
 then 
-    src_nic_name="ens28np0"
+    src_nic_name="ens22np0"
     dst_ip="192.168.200.1"
     dst_mac="0c:42:a1:d8:10:85"
 # elif [[ $line == "cx5" && $host_name == 149 ]] #cx5(withbf2)-cx5(withcx4)
