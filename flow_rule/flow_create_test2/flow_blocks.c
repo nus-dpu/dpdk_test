@@ -148,7 +148,8 @@ generate_ipv4_udp_flow(uint16_t port_id,
 	/* Set the rule attribute, only ingress packets will be checked. 8< */
 	memset(&attr, 0, sizeof(struct rte_flow_attr));
 	attr.priority = 0;
-	attr.egress = 1;
+	attr.egress = 0;
+	attr.ingress = 1;
 	/* >8 End of setting the rule attribute. */
 
 	/*

@@ -150,7 +150,6 @@ generate_ipv4_sample_flow(uint16_t port_id, uint16_t rx_q,
 	struct rte_flow_action_count counter = { .id = 1 };
 
 	struct rte_flow_action_sample sample = { .ratio = 100};
-	struct rte_flow_action_count counter_sample = { .id = 1 };
 
 	struct rte_flow_item_ipv4 ip_spec;
 	struct rte_flow_item_ipv4 ip_mask;
@@ -164,13 +163,12 @@ generate_ipv4_sample_flow(uint16_t port_id, uint16_t rx_q,
 	/* Set the rule attribute, only ingress packets will be checked. 8< */
 	memset(&attr, 0, sizeof(struct rte_flow_attr));
 	attr.ingress = 1;
+	attr.group = 0;
 	/* >8 End of setting the rule attribute. */
 
     /* create sample packet actions */
-	// action_sample[0].type = RTE_FLOW_ACTION_TYPE_COUNT;
-	// action_sample[0].conf = &counter_sample;
-	// action_sample[0].type = RTE_FLOW_ACTION_TYPE_QUEUE;
-	// action_sample[0].conf = &queue;
+	action_sample[0].type = RTE_FLOW_ACTION_TYPE_QUEUE;
+	action_sample[0].conf = &queue;
 	action_sample[1].type = RTE_FLOW_ACTION_TYPE_END;
 	sample.actions = action_sample;
 

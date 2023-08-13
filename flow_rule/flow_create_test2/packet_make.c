@@ -13,8 +13,8 @@ static void
 fill_ethernet_header(struct rte_ether_hdr *eth_hdr, const struct rte_ether_addr *src_mac, const struct rte_ether_addr *dst_mac) {
 	struct rte_ether_addr s_addr = *src_mac; 
 	struct rte_ether_addr d_addr = *dst_mac;
-	eth_hdr->s_addr =s_addr;
-	eth_hdr->d_addr =d_addr;
+	eth_hdr->src_addr =s_addr;
+	eth_hdr->dst_addr =d_addr;
 	eth_hdr->ether_type = rte_cpu_to_be_16(0x0800);
 }
 
