@@ -1,7 +1,7 @@
 # parameter
 file=pkt_send_mul_auto_sta4
 remotefile=pkt_rcv_mul_auto_sta3
-lab=lab_4
+lab=lab_5
 
 run_path="/home/qyn/software/FastNIC/lab_all/$lab"
 ovs_path="/home/ubuntu/software/FastNIC/lab_results/ovs_log"

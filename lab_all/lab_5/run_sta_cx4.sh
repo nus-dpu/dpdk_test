@@ -27,18 +27,18 @@ dstip_num=-1
 test_time_rcv=80
 test_time_send=60
 
-if [[ ! -d "../lab_results/ovslog" ]]
+if [[ ! -d "./lab_results/ovslog" ]]
 then
-    mkdir -p ../lab_results/ovslog
+    mkdir -p ./lab_results/ovslog
 fi
 
-if [[ ! -d "../lab_results/log" ]]
+if [[ ! -d "./lab_results/log" ]]
 then
-    mkdir -p ../lab_results/log
+    mkdir -p ./lab_results/log
 fi
 
 i=0
-for off_thre in {1,2,3,4,5,7,10,30}
+for off_thre in {1,2,3,4,5,7,10,20,30}
 # for core_id in {18,18-19,18-21,18-23,18-25,18-27,18-29,18-31,18-33,18-35}
 # for core_id in {"0-31","0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30","0,2,4,6,8,10,12,14","0,2,4,6","0,2"}
 # for core_id in {"0","1"}
@@ -53,7 +53,7 @@ do
         rcv_run_para="flow_num $flow_num pkt_len 64 flow_size $flow_size test_time $test_time_rcv srcip_num $srcip_num dstip_num $dstip_num"
 
         echo "nohup expect remote_run_sta_cx4.expect $run_path $user $password $remotefile $line \"$rcv_run_para\" >> ./lab_results/log/remote.out 2>&1 &"
-        nohup expect remote_run_sta_cx4.expect $run_path $user $password $remotefile $line "$rcv_run_para" >> ./lab_results/log/remote.out 2>&1 &
+        expect remote_run_sta_cx4.expect $run_path $user $password $remotefile $line "$rcv_run_para" >> ./lab_results/log/remote.out 2>&1 &
         sleep 8s
 
         echo ./start_sta.sh $file $line 150 $core_id $run_path \"$send_run_para\"
