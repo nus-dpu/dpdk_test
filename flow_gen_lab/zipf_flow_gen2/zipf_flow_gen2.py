@@ -51,8 +51,10 @@ def main():
     pkt_num = 5000000 # Total number of packets to generate
     zipf_para = 2.0 # the parameter a for zipf
     packets_per_write = 500  # Number of packets to write in each iteration    print("Hello, world!")
+    flow_num = 100000
 
-    for flow_num in [100, 10000, 50000, 100000]: # Total number of flows to generate
+    # for flow_num in [100, 10000, 50000, 100000]: # Total number of flows to generate
+    for zipf_para in [1.1, 1.2, 1.3, 1.5, 1.7, 2.0]:
         filename = "/dev/shm/flow_"+str(flow_num)+".pcap"
         pktfile_gen(filename, flow_num, pkt_num, packets_per_write, zipf_para)
         print(f"{pkt_num} packets ({flow_num}flows in {zipf_para} zipf distribution) written to {filename}.")
