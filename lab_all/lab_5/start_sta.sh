@@ -106,4 +106,12 @@ then
     make clean
     make
     sudo ./build/$file_name -l ${core_id} -a ${src_pci}
+elif [[ ${file_name} == "pkt_send_mul_auto_sta4_2" ]]
+then
+    sed -i "s/#define FLOW_NUM.*$/#define FLOW_NUM ${flow_num}/" para.h
+    sed -i "s/#define MAX_RECORD_COUNT.*$/#define MAX_RECORD_COUNT ${test_time}/" para.h
+    sed -i "s/#define ZIPF_PARA.*$/#define ZIPF_PARA ${zipf_para}/" para.h
+    make clean
+    make
+    sudo ./build/$file_name -l ${core_id} -a ${src_pci} -- --srcmac ${src_mac} --dstmac ${dst_mac} 
 fi
