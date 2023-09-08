@@ -1,5 +1,5 @@
 # parameter
-file=pkt_send_mul_auto_sta4
+file=pkt_send_mul_auto_sta4_2
 remotefile=pkt_rcv_mul_auto_sta3
 lab=lab_5
 
