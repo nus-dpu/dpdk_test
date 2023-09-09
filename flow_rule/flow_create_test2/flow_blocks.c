@@ -14,7 +14,7 @@ generate_ipv4_flow(uint16_t port_id, uint16_t rx_q,
 		uint32_t dest_ip, uint32_t dest_mask,
 		struct rte_flow_error *error);
 struct rte_flow *
-generate_ipv4_udp_flow(uint16_t port_id, 
+generate_ipv4_udp_flow(uint16_t port_id, uint16_t rx_q,
 		uint32_t src_ip, uint32_t src_mask,
 		uint32_t dest_ip, uint32_t dest_mask,
 		uint16_t udp_src_port, uint16_t udp_dst_port,
@@ -123,7 +123,7 @@ generate_ipv4_flow(uint16_t port_id, uint16_t rx_q,
 
 /* Function responsible for creating the flow rule. 8< */
 struct rte_flow *
-generate_ipv4_udp_flow(uint16_t port_id, 
+generate_ipv4_udp_flow(uint16_t port_id, uint16_t rx_q,
 		uint32_t src_ip, uint32_t src_mask,
 		uint32_t dest_ip, uint32_t dest_mask,
 		uint16_t udp_src_port, uint16_t udp_dst_port,
@@ -135,6 +135,7 @@ generate_ipv4_udp_flow(uint16_t port_id,
 	struct rte_flow_action action[IPV4_UDP_ACTION_NUM];
 	struct rte_flow *flow = NULL;
 	struct rte_flow_action_count counter = { .id = 1 };
+	struct rte_flow_action_queue queue = { .index = rx_q };
 	struct rte_flow_item_ipv4 ip_spec;
 	struct rte_flow_item_ipv4 ip_mask;
 	struct rte_flow_item_udp udp_port_spec;
@@ -148,7 +149,7 @@ generate_ipv4_udp_flow(uint16_t port_id,
 	/* Set the rule attribute, only ingress packets will be checked. 8< */
 	memset(&attr, 0, sizeof(struct rte_flow_attr));
 	attr.priority = 0;
-	attr.egress = 1;
+	attr.ingress = 1;
 	attr.group = 1;
 	/* >8 End of setting the rule attribute. */
 
@@ -158,7 +159,8 @@ generate_ipv4_udp_flow(uint16_t port_id,
 	 */
 	action[0].type = RTE_FLOW_ACTION_TYPE_COUNT;
 	action[0].conf = &counter;
-	action[1].type = RTE_FLOW_ACTION_TYPE_DROP;
+	action[1].type = RTE_FLOW_ACTION_TYPE_QUEUE;
+	action[1].conf = &queue;
 	action[2].type = RTE_FLOW_ACTION_TYPE_END;
 
 	/*

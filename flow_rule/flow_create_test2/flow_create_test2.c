@@ -47,7 +47,7 @@
 #define FULL_MASK 0xffffffff /* full mask */
 #define EMPTY_MASK 0x0 /* empty mask */
 
-#define FLOW_NUM 6000000
+#define FLOW_NUM 10000000
 #define BURST_SIZE 32
 
 struct lcore_configuration {
@@ -125,10 +125,9 @@ static void lcore_main(uint32_t lcore_id){
 	int i;
 	for(i = 0 ; i < FLOW_NUM; i++){
 		uint64_t start = rte_rdtsc();
-		flow = generate_ipv4_udp_flow(port_id, SRC_IP, FULL_MASK, 
-		                                       DEST_IP_PREFIX + i, FULL_MASK, 
-											   1234, 5678,
-											   &error);
+		flow = generate_ipv4_udp_flow(port_id, 0, SRC_IP, FULL_MASK, 
+		                              DEST_IP_PREFIX + i, FULL_MASK, 
+									  1234, 5678, &error);
 		double add_time=(double)(rte_rdtsc() - start) / rte_get_timer_hz();
 		time_list[i] = add_time;
 		if (!flow) {
