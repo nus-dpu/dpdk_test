@@ -488,7 +488,7 @@ static void signal_handler(int signum)
 
 static int pcap_init(void){
     //open pcap file
-    const char *pcap_file = PCAP_FILE(FLOW_NUM, ZIPF_PRARA);
+    const char *pcap_file = PCAP_FILE(FLOW_NUM, ZIPF_PARA);
     char errbuf[PCAP_ERRBUF_SIZE];
     handle = pcap_open_offline(pcap_file, errbuf);
     if (handle == NULL) {

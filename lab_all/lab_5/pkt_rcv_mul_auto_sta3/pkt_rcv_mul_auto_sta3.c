@@ -421,7 +421,7 @@ int main(int argc, char *argv[])
         for (j = 0;j<MAX_LCORES;j++){
             if(rte_lcore_is_enabled(j)) {
                 rx_pps_p += flowlog_timeline[j][i].rx_pps_t;
-                rx_bps_p += flowlog_timeline[j][i].rx_pps_t;
+                rx_bps_p += flowlog_timeline[j][i].rx_bps_t;
             }
         }
         fprintf(fp, "%d,%ld,%d,0,0,%lf,%lf\r\n", \
