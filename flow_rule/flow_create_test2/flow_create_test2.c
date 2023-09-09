@@ -47,7 +47,7 @@
 #define FULL_MASK 0xffffffff /* full mask */
 #define EMPTY_MASK 0x0 /* empty mask */
 
-#define FLOW_NUM 100000
+#define FLOW_NUM 6000000
 #define BURST_SIZE 32
 
 struct lcore_configuration {

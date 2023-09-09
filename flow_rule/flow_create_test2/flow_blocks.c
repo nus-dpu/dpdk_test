@@ -149,6 +149,7 @@ generate_ipv4_udp_flow(uint16_t port_id,
 	memset(&attr, 0, sizeof(struct rte_flow_attr));
 	attr.priority = 0;
 	attr.egress = 1;
+	attr.group = 1;
 	/* >8 End of setting the rule attribute. */
 
 	/*
