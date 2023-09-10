@@ -44,7 +44,7 @@ do
 
     if [[ $(($j % 1000)) == 0 ]];
     then
-      echo $src_ip
+      echo $src_ip_dot
     fi
 
     #150 as send, 149 as recv

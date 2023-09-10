@@ -98,6 +98,16 @@ static void swap_ip(struct rte_mbuf *packet_buf){
     uint32_t swap_ip;
 
     data_ipv4 = MBUF_IPV4_2PROTO(packet_buf);
+    
+    int a;
+    for(a = 0; a < 20; a++){
+        printf("%02x ", data_ipv4[a]);
+        if(a % 4 == 3){
+            printf("\n");
+        }
+    }
+
+
     memcpy(&swap_ip, &data_ipv4[16], sizeof(uint32_t)); //save dst ip to swap
     memcpy(&data_ipv4[16], &data_ipv4[12], sizeof(uint32_t)); //change dst ip to src ip
     memcpy(&data_ipv4[12], &swap_ip, sizeof(uint32_t));//change src ip to dst ip

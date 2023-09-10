@@ -19,3 +19,7 @@ pkt_loopsend_mul_sta
     1.the script send and receive packets in the meantime
     2.print rx and tx count
     3.send pattern is send FLOW_NUM flows whose size is all FLOW_SIZE
+
+pkt_sendcir_mul_auto_sta
+    based on pkt_loopsend_mul_sta
+    1.same as pkt_send_mul_auto_sta3, send PKT_NUM packets with FLOW_NUM flows whose size is all FLOW_SIZE
