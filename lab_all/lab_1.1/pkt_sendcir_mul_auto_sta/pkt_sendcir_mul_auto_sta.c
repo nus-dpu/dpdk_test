@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdlib.h>
 #include <stdarg.h>
 #include <ctype.h>
 #include <errno.h>
@@ -16,35 +17,43 @@
 #include <rte_prefetch.h>
 #include <rte_ether.h>
 #include <rte_ip.h>
+#include <rte_memcpy.h>
 #include <getopt.h>
 #include <unistd.h> //For sleep()
 #include <math.h> //For pow()
 #include <sys/time.h>
+#include <pcap.h>
 
 #include "para.h"
-
-#define APP_ETHER_TYPE  0x2222
-#define APP_MAGIC       0x3333
 
 #define MAX_LCORES 72
 #define RX_QUEUE_PER_LCORE   1
 #define TX_QUEUE_PER_LCORE   1
-#define MAX_BURST_SIZE       32 //length of queue
+#define BURST_SIZE 32
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024
-#define NUM_MBUFS 4095
-#define MBUF_SIZE   (10000+sizeof(struct rte_mbuf)+RTE_PKTMBUF_HEADROOM)
+
+#define NUM_MBUFS 4095//(PKTS_NUM+BURST_SIZE)
+#define MBUF_SIZE  (1518+sizeof(struct rte_mbuf)+RTE_PKTMBUF_HEADROOM)
 #define MBUF_CACHE_SIZE 32
-#define BURST_SIZE 32
 #define PAY_LOAD_LEN (PKT_LEN-28) //udp 
+// #define PCAP_ENABLE
 
 #define APP_LOG(...) RTE_LOG(INFO, USER1, __VA_ARGS__)
 // #define PRN_COLOR(str) ("\033[0;33m" str "\033[0m")	// Yellow accent
 
-#define DEST_IP_PREFIX ((192<<24)) /* dest ip prefix = 192.0.0.0.0 */
+#define TO_STRING(a) #a
+#define STRING_THRANFER(a) TO_STRING(a)
 
-#define ZIPF_A 1.25
-#define ZIPF_C 1.0
+#define SRC_IP_PREFIX ((192<<24)) /* dest ip prefix = 192.0.0.0.0 */
+#define DEST_IP_PREFIX ((193<<24)) /* dest ip prefix = 192.0.0.0.0 */
+
+#define THROUGHPUT_FILE "../lab_results/" PROGRAM "/throughput.csv"
+#define THROUGHPUT_TIME_FILE   "../lab_results/" PROGRAM "/throughput_time.csv"
+
+#ifdef PCAP_ENABLE
+#define PCAP_FILE(a) ("../../dataset/synthetic/flow_" STRING_THRANFER(a) ".pcap")
+#endif
 
 struct lcore_configuration {
     uint32_t vid; // virtual core id
@@ -55,21 +64,45 @@ struct lcore_configuration {
     uint32_t rx_queue_list[RX_QUEUE_PER_LCORE]; // list of RX queues
 } __rte_cache_aligned;
 
-struct payload
-{
-    char data[PAY_LOAD_LEN];/* data */
+struct flow {
+    uint32_t src_ip;
+    uint32_t dst_ip;
+    uint16_t src_port;
+    uint16_t dst_port;
+};
+
+struct packet_buffer {
+    struct rte_mbuf **mbufs;
+    uint32_t count;
+    uint32_t lcore_id;
+    uint32_t queue_id;
+};
+
+struct payload {
+    uint32_t flow_size;
+    uint32_t pkt_seq;
+    uint64_t timestamp;
+};
+
+struct flow_log {
+    double tx_pps_t;
+    double tx_bps_t;
+    double rx_pps_t;
+    double rx_bps_t;
 };
 
 struct rte_ether_addr src_mac;
 struct rte_ether_addr dst_mac;
 
-struct rte_mempool *pktmbuf_pool[MAX_LCORES];
 static unsigned enabled_port = 0;
 static uint64_t min_txintv = 15/*us*/;	// min cycles between 2 returned packets
 static volatile bool force_quit = false;
 static volatile uint16_t nb_pending = 0;
 
+pcap_t *handle;
 struct lcore_configuration lcore_conf[MAX_LCORES];
+struct rte_mempool *pktmbuf_pool[MAX_LCORES*RX_QUEUE_PER_LCORE];
+struct packet_buffer pkt_buffer[MAX_LCORES*RX_QUEUE_PER_LCORE];
 
 uint64_t tx_pkt_num[MAX_LCORES];
 uint64_t rx_pkt_num[MAX_LCORES];
@@ -77,43 +110,9 @@ double tx_pps[MAX_LCORES];
 double rx_pps[MAX_LCORES];
 double tx_bps[MAX_LCORES];
 double rx_bps[MAX_LCORES];
-double tx_pps_timeline[MAX_LCORES][MAX_RECORD_COUNT];
-double tx_bps_timeline[MAX_LCORES][MAX_RECORD_COUNT];
-// double (*tx_pps_timeline)[128] = (double(*)[128])malloc(sizeof(double) * 72 * 128);
-// double (*tx_bps_timeline)[128] = (double(*)[128])malloc(sizeof(double) * 72 * 128);
-// double timeline[MAX_LCORES][30];
+struct flow_log *flowlog_timeline[MAX_LCORES];
 
-void zipf_generate(double *zipf_cumuP){
-    double sum = 0.0;
-    int i;
-
-    for (i = 0; i < FLOW_NUM; i++){         
-        sum += ZIPF_C/pow((double)(i+2), ZIPF_A);
-    }
-    for (i = 0; i < FLOW_NUM; i++){ 
-        double zipf_temp = ZIPF_C/pow((double)(i+2), ZIPF_A);
-        if (i == 0)
-            zipf_cumuP[i] = zipf_temp/sum;
-        else
-            zipf_cumuP[i] = zipf_cumuP[i-1] + zipf_temp/sum;
-    }
-}
-
-int zipf_pick(const double *zipf_cumuP){
-    unsigned int seed = rte_rdtsc();
-    int index = 0;
-    double data = (double)rand_r(&seed)/RAND_MAX;  //生成一个0~1的数
-    while (data > zipf_cumuP[index])   //找索引,直到找到一个比他小的值,那么对应的index就是随机数了
-        index++;
-    return index;
-}
-
-uint32_t reversebytes_uint32t(uint32_t value){
-    return (value & 0x000000FFU) << 24 | (value & 0x0000FF00U) << 8 | 
-        (value & 0x00FF0000U) >> 8 | (value & 0xFF000000U) >> 24; 
-}
-
-static void
+static inline void
 fill_ethernet_header(struct rte_ether_hdr *eth_hdr) {
 	struct rte_ether_addr s_addr = src_mac; 
 	struct rte_ether_addr d_addr = dst_mac;
@@ -122,8 +121,8 @@ fill_ethernet_header(struct rte_ether_hdr *eth_hdr) {
 	eth_hdr->ether_type = rte_cpu_to_be_16(0x0800);
 }
 
-static void
-fill_ipv4_header(struct rte_ipv4_hdr *ipv4_hdr, const double *zipf_cumuP, uint32_t ip_tag) {
+static inline void
+fill_ipv4_header(struct rte_ipv4_hdr *ipv4_hdr, const struct flow *flow_id) {
 	ipv4_hdr->version_ihl = (4 << 4) + 5; // ipv4, length 5 (*4)
 	ipv4_hdr->type_of_service = 0; // No Diffserv
 	ipv4_hdr->total_length = rte_cpu_to_be_16(PKT_LEN); // tcp 20
@@ -133,54 +132,46 @@ fill_ipv4_header(struct rte_ipv4_hdr *ipv4_hdr, const double *zipf_cumuP, uint32
 	ipv4_hdr->next_proto_id = 17; // udp
 	ipv4_hdr->hdr_checksum = rte_cpu_to_be_16(0x0);
 
-    // unsigned int seed = rte_rdtsc();
-    // uint32_t src_ip = rand_r(&seed)%FLOW_NUM;
-    // uint32_t src_ip = zipf_pick(zipf_cumuP);
-    // uint32_t src_ip = inet_addr("192.168.200.2");// cx4
-    uint32_t src_ip = ip_tag;
-
-    uint32_t dst_ip = inet_addr("192.168.200.1");// bf2
-
-	// ipv4_hdr->src_addr = rte_cpu_to_be_32(reversebytes_uint32t(src_ip)); 
-    ipv4_hdr->src_addr = rte_cpu_to_be_32(DEST_IP_PREFIX+src_ip); 
-	ipv4_hdr->dst_addr = rte_cpu_to_be_32(reversebytes_uint32t(dst_ip)); 
+    ipv4_hdr->src_addr = rte_cpu_to_be_32(flow_id->src_ip); 
+	ipv4_hdr->dst_addr = rte_cpu_to_be_32(flow_id->dst_ip);
 
 	ipv4_hdr->hdr_checksum = rte_cpu_to_be_16(rte_ipv4_cksum(ipv4_hdr));
 }
 
-static void
-fill_udp_header(struct rte_udp_hdr *udp_hdr, struct rte_ipv4_hdr *ipv4_hdr, const double *zipf_cumuP) {
-    uint16_t src_port = 0x162E;
-    uint16_t dst_port = 0x1503;
-    // unsigned int seed = rte_rdtsc();
-    // uint16_t dst_port = rand_r(&seed)%FLOW_NUM;
-    // uint16_t dst_port = zipf_pick(zipf_cumuP);
-
-    
-    udp_hdr->src_port = rte_cpu_to_be_16(src_port);
-	udp_hdr->dst_port = rte_cpu_to_be_16(dst_port);
+static inline void
+fill_udp_header(struct rte_udp_hdr *udp_hdr, struct rte_ipv4_hdr *ipv4_hdr, const struct flow *flow_id) {
+    udp_hdr->src_port = rte_cpu_to_be_16(flow_id->src_port);
+	udp_hdr->dst_port = rte_cpu_to_be_16(flow_id->dst_port);
 	udp_hdr->dgram_len = rte_cpu_to_be_16(PKT_LEN - sizeof(struct rte_ipv4_hdr));
     udp_hdr->dgram_cksum = rte_cpu_to_be_16(0x0);
 	
 	udp_hdr->dgram_cksum = rte_cpu_to_be_16(rte_ipv4_udptcp_cksum(ipv4_hdr, udp_hdr));
 }
 
-static void
-fill_tcp_header(struct rte_tcp_hdr *tcp_hdr, struct rte_ipv4_hdr *ipv4_hdr) {
-	tcp_hdr->src_port = rte_cpu_to_be_16(0x162E);
-	tcp_hdr->dst_port = rte_cpu_to_be_16(0x04d2);
-	tcp_hdr->sent_seq = rte_cpu_to_be_32(0);
-	tcp_hdr->recv_ack = rte_cpu_to_be_32(0);
-	tcp_hdr->data_off = 0;
-	tcp_hdr->tcp_flags = 0;
-	tcp_hdr->rx_win = rte_cpu_to_be_16(16);
-	tcp_hdr->cksum = rte_cpu_to_be_16(0x0);
-	tcp_hdr->tcp_urp = rte_cpu_to_be_16(0);
+// static inline void
+// fill_tcp_header(struct rte_tcp_hdr *tcp_hdr, struct rte_ipv4_hdr *ipv4_hdr) {
+// 	tcp_hdr->src_port = rte_cpu_to_be_16(0x162E);
+// 	tcp_hdr->dst_port = rte_cpu_to_be_16(0x04d2);
+// 	tcp_hdr->sent_seq = rte_cpu_to_be_32(0);
+// 	tcp_hdr->recv_ack = rte_cpu_to_be_32(0);
+// 	tcp_hdr->data_off = 0;
+// 	tcp_hdr->tcp_flags = 0;
+// 	tcp_hdr->rx_win = rte_cpu_to_be_16(16);
+// 	tcp_hdr->cksum = rte_cpu_to_be_16(0x0);
+// 	tcp_hdr->tcp_urp = rte_cpu_to_be_16(0);
 
-	tcp_hdr->cksum = rte_cpu_to_be_16(rte_ipv4_udptcp_cksum(ipv4_hdr, tcp_hdr));
-}
+// 	tcp_hdr->cksum = rte_cpu_to_be_16(rte_ipv4_udptcp_cksum(ipv4_hdr, tcp_hdr));
+// }
 
-static struct rte_mbuf *make_testpkt(uint32_t queue_id, double *zipf_cumuP, uint32_t ip_tag)
+// static inline void
+// fill_payload(struct payload *payload_data, struct flow_table *flow) {
+//     payload_data->flow_size = flow->flow_size;
+//     payload_data->pkt_seq = flow->pkt_seq;
+//     payload_data->timestamp = 0; //shoule change later
+//     flow->pkt_seq++;
+// }
+
+static struct rte_mbuf *make_testpkt(uint32_t queue_id, struct flow *flow)
 {
     
     struct rte_mbuf *mp = rte_pktmbuf_alloc(pktmbuf_pool[queue_id]);
@@ -202,7 +193,7 @@ static struct rte_mbuf *make_testpkt(uint32_t queue_id, double *zipf_cumuP, uint
     curr_ofs += sizeof(struct rte_ether_hdr);
 
     struct rte_ipv4_hdr *ipv4_h = rte_pktmbuf_mtod_offset(mp, struct rte_ipv4_hdr *, curr_ofs);
-	fill_ipv4_header(ipv4_h, zipf_cumuP, ip_tag);
+	fill_ipv4_header(ipv4_h, flow);
     curr_ofs += sizeof(struct rte_ipv4_hdr);
 
     // struct rte_tcp_hdr *tcp_h = rte_pktmbuf_mtod_offset(mp, struct rte_tcp_hdr *, curr_ofs);
@@ -210,13 +201,44 @@ static struct rte_mbuf *make_testpkt(uint32_t queue_id, double *zipf_cumuP, uint
     // curr_ofs += sizeof(struct rte_tcp_hdr);
 
     struct rte_udp_hdr *udp_h = rte_pktmbuf_mtod_offset(mp, struct rte_udp_hdr *, curr_ofs);
-	fill_udp_header(udp_h, ipv4_h,zipf_cumuP);
+	fill_udp_header(udp_h, ipv4_h,flow);
     curr_ofs += sizeof(struct rte_udp_hdr);
     
     // struct payload * payload_data= rte_pktmbuf_mtod_offset(mp, struct payload *, curr_ofs);
-    // payload_data->data[0] = 1;
+    // fill_payload(payload_data, flow);
 
     return mp;
+}
+
+#ifdef PCAP_ENABLE
+// Callback function to process each packet in pcap
+void packet_handler(uint8_t *args, const struct pcap_pkthdr *header, const uint8_t *packet)
+{
+    struct packet_buffer *buffer = (struct packet_buffer *)args;
+    uint32_t queue_id = buffer->queue_id;
+
+    // Allocate an mbuf for the packet
+    rte_memcpy(rte_pktmbuf_mtod(buffer->mbufs[buffer->count], void *), packet, header->caplen);
+    buffer->mbufs[buffer->count]->pkt_len = header->len;
+    buffer->mbufs[buffer->count]->data_len = header->caplen;
+    buffer->count++;
+
+    // int a;
+    // printf("packet %d:\n", buffer->count);
+    // // uint8_t* pkt_p = (uint8_t*)rte_pktmbuf_mtod(buffer->mbufs[buffer->count], void *);
+    // for(a = 0; a < 78; a++){
+    //     printf("%02x ", packet[a]);
+    //     if(a % 16 == 15){
+    //         printf("yes");
+    //         printf("\n");
+    //     }
+    // }
+    // printf("\n");
+}
+#endif
+
+void int_to_string(int input, char* output){
+    sprintf(output, "%d", input);
 }
 
 /*
@@ -229,82 +251,139 @@ static void lcore_main(uint32_t lcore_id)
     if (rte_eth_dev_socket_id(enabled_port) > 0 &&
             rte_eth_dev_socket_id(enabled_port) != (int)rte_socket_id())
         printf("WARNING, port %u is on remote NUMA node.\n", enabled_port);
+
+    /* Run until the application is quit or killed. */
+    struct lcore_configuration *lconf = &lcore_conf[lcore_id];
+    uint32_t queue_id;
+    struct rte_mbuf *bufs_rx[BURST_SIZE], *bufs_tx[BURST_SIZE];
+    
+    int pkt_batch_count = 0;
+    
+    uint64_t pkt_count = 0;
+    uint64_t loop_count = 0;
+    uint64_t record_count = 0;
+    /* pkts_sta */
+    uint64_t total_tx = 0, total_rx = 0;
+    uint64_t txB[BURST_SIZE], rxB[BURST_SIZE];
+    uint64_t total_txB = 0, total_rxB = 0;
+    uint64_t last_total_tx = 0, last_total_rx = 0;
+    uint64_t last_total_txB = 0, last_total_rxB = 0;
+    // uint64_t total_txb = 0, total_rxb = 0; //we send same length packets now, can be ignored
+    /* time_sta */
+    uint64_t start = rte_rdtsc();
+    uint64_t time_last_print = start;
+    uint64_t time_now;
+
+    if (unlikely(flowlog_timeline[lcore_id] != NULL)){
+        rte_exit(EXIT_FAILURE, "There are error when allocate memory to flowlog.\n");
+    }else{
+        flowlog_timeline[lcore_id] = (struct flow_log *) malloc(sizeof(struct flow_log) * MAX_RECORD_COUNT);
+        memset(flowlog_timeline[lcore_id], 0, sizeof(struct flow_log) * MAX_RECORD_COUNT);
+    }
+
+    int i, j;
+    #ifdef PCAP_ENABLE
+    for (i = 0; i < lconf->n_rx_queue; i++){
+        queue_id = lconf->rx_queue_list[i];
+        pkt_buffer[queue_id].mbufs = (struct rte_mbuf **) malloc(sizeof(struct rte_mbuf *) * PKTS_NUM);
+        //initialize pkt_buffer
+        int num_allocated = rte_pktmbuf_alloc_bulk(pktmbuf_pool[queue_id], 
+                               pkt_buffer[queue_id].mbufs, PKTS_NUM);
+        pkt_buffer[queue_id].count = 0;
+        pkt_buffer[queue_id].lcore_id = lcore_id;
+        pkt_buffer[queue_id].queue_id = queue_id;
+        if(pcap_loop(handle, -1, packet_handler, (u_char *)&pkt_buffer[queue_id]) != 0){
+            rte_exit(EXIT_FAILURE, "Error in pcap_loop: %s\n", pcap_geterr(handle));
+        }
+    }
+    #endif
+
     printf("Core %u forwarding packets. [Ctrl+C to quit]\n", rte_lcore_id());
     fflush(stdout);
 
-    /* Run until the application is quit or killed. */
-    uint16_t tx_count = 0;
-    struct lcore_configuration *lconf = &lcore_conf[lcore_id];
-    struct rte_mbuf *bufs[BURST_SIZE], *bufs_tx[BURST_SIZE];
-    uint64_t last_tx_tsc = 0;
-    uint64_t perf_runtime_tsc = rte_rdtsc();	// Save starting time first
-    uint64_t loop_count = 0, total_tx = 0, total_rx = 0;
-    
-    double* pf = (double*)malloc(sizeof(double) * FLOW_NUM);
-    if(pf == NULL){
-        rte_exit(EXIT_FAILURE, "Cannot alloc memory for pf in %u\n", lcore_id);
-    }
-    zipf_generate(pf);
-    
-    uint64_t start = rte_rdtsc();
-    uint64_t length = 0;
-    uint64_t time_last_print = start;
-    uint64_t last_total_tx = total_tx;
-    uint64_t last_length = length;
-    uint64_t dtx;
-    uint64_t dlength;
-    uint64_t record_count = 0;
-    uint64_t time_temp;
-    uint32_t ip_tag = 0;
-
-    while (!force_quit/* && loop_count < 1000*/ && record_count < MAX_RECORD_COUNT) {
-        int i;
+    while (!force_quit && record_count < MAX_RECORD_COUNT && pkt_count < PKTS_NUM) {
         for (i = 0; i < lconf->n_rx_queue; i++){
-            int j;
-            for(j = 0; j < BURST_SIZE; j++){
-                bufs_tx[j] = make_testpkt(lconf->rx_queue_list[i],pf,ip_tag);
-                ip_tag++;
-                if (ip_tag >= FLOW_NUM) {
-                    ip_tag=0;
-                }
+            #ifdef PCAP_ENABLE
+            rte_pktmbuf_alloc_bulk(pktmbuf_pool[queue_id], 
+                                   bufs_tx, 
+                                   BURST_SIZE);
+            #endif
+            for (j = 0; j < BURST_SIZE; j++){
+                struct flow flow_id;
+                flow_id.src_ip = SRC_IP_PREFIX + (pkt_count % FLOW_NUM);
+                flow_id.dst_ip = ((192<<24 + 168<<16 + 200<<8)) + 1;
+                flow_id.src_port = 1234;
+                flow_id.dst_port = 4321;
+                
+                #ifndef PCAP_ENABLE
+                bufs_tx[j] = make_testpkt(lconf->rx_queue_list[i], &flow_id);
+                #endif
+
+                /* packet copy from buffer to send*/
+                // rte_memcpy(rte_pktmbuf_mtod(bufs_tx[j], void *), 
+                //            rte_pktmbuf_mtod(pkt_buffer[queue_id].mbufs[pkt_count], void*), 
+                //            pkt_buffer[queue_id].mbufs[pkt_count]->data_len); 
+                // bufs_tx[j]->pkt_len = pkt_buffer[queue_id].mbufs[pkt_count]->pkt_len;
+                // bufs_tx[j]->data_len = pkt_buffer[queue_id].mbufs[pkt_count]->data_len;
+                
+                txB[j] = bufs_tx[j]->data_len;
+
+                pkt_count++;
             }
+
             // Transmit packet
             uint16_t nb_tx = rte_eth_tx_burst(lconf->port, lconf->tx_queue_list[i], bufs_tx, BURST_SIZE);
             total_tx += nb_tx;
-            length += (bufs_tx[0]->data_len*nb_tx);
+            for (j = 0; j < nb_tx; total_txB += txB[j], j++)
             if (nb_tx < BURST_SIZE){
                 rte_pktmbuf_free_bulk(bufs_tx + nb_tx, BURST_SIZE - nb_tx);
             }
+            //Receive packets
+            const uint16_t nb_rx = rte_eth_rx_burst(lconf->port, lconf->rx_queue_list[i], bufs_rx, BURST_SIZE);
+            total_rx += nb_rx;
+            for (j = 0; j < nb_rx; total_txB += bufs_rx[j]->data_len, j++)
+            if (nb_rx > 0){
+                rte_pktmbuf_free_bulk(bufs_rx, nb_rx);
+            }
         }
         loop_count++;
-        time_temp = rte_rdtsc();
-        double time_inter_temp=(double)(time_temp-time_last_print)/rte_get_timer_hz();
-        if (time_inter_temp>=0.5){
-            time_last_print=time_temp;
+
+        //save log
+        time_now = rte_rdtsc();
+        double time_inter_temp=(double)(time_now-time_last_print)/rte_get_timer_hz();
+        if (time_inter_temp >= 0.5){
+            uint64_t dtx, drx;
+            uint64_t dtxB, drxB;
+
             dtx = total_tx - last_total_tx;
+            drx = total_rx - last_total_rx;
+            dtxB = total_txB - last_total_txB;
+            drxB = total_rxB - last_total_rxB;
+
+            time_last_print = time_now;
             last_total_tx = total_tx;
-            dlength = length - last_length;
-            last_length = length;
-            // APP_LOG("lcoreID %ld: run time: %lf.\n", lcore_id, (time_temp-(double)start)/rte_get_timer_hz());
-            // APP_LOG("lcoreID %ld: during this time, send %ld pkts, throughput: %lf pps, %lf bps.\n", lcore_id,dtx, (double)dtx/time_inter_temp, (double)dlength/time_inter_temp);
-            // APP_LOG("times of loop is %ld, should send packets %ld.\n", loop_count, loop_count);
-            tx_pps_timeline[lcore_id][record_count] = (double)dtx/time_inter_temp;
-            tx_bps_timeline[lcore_id][record_count] = (double)dlength*8/time_inter_temp;
-            // timeline[lcore_id][record_count] = (double)(time_temp-start)/rte_get_timer_hz();
-            record_count++;
+            last_total_txB = total_txB;
+            last_total_rx = total_rx;
+            last_total_rxB = total_rxB;
+            flowlog_timeline[lcore_id][record_count].tx_pps_t = (double)dtx/time_inter_temp;
+            flowlog_timeline[lcore_id][record_count].tx_bps_t = (double)dtxB*8/time_inter_temp;
+            flowlog_timeline[lcore_id][record_count].rx_pps_t = (double)drx/time_inter_temp;
+            flowlog_timeline[lcore_id][record_count].rx_bps_t = (double)drxB*8/time_inter_temp;
+          record_count++;
         }
-
-
     }
-    // uint64_t time_interval = rte_rdtsc() - start;
     double time_interval = (double)(rte_rdtsc() - start)/rte_get_timer_hz();
     APP_LOG("lcoreID %d: run time: %lf.\n", lcore_id, time_interval);
-    APP_LOG("lcoreID %d: Sent %ld pkts, received %ld pkts, throughput: %lf pps, %lf bps.\n", lcore_id, total_tx, total_rx, (double)total_tx/time_interval, (double)length*8/time_interval);
+    APP_LOG("lcoreID %d: Sent %ld pkts, received %ld pkts; TX: %lf pps, %lf bps; RX: %lf pps, %lf bps.\n", \
+            lcore_id, total_tx, total_rx, (double)total_tx/time_interval, (double) total_txB*8/time_interval, \
+            (double)total_rx/time_interval, (double) total_rxB*8/time_interval);
     APP_LOG("lcoreID %d: times of loop is %ld, should send packets %ld.\n", lcore_id, loop_count, loop_count*BURST_SIZE);
     tx_pkt_num[lcore_id] = total_tx;
     rx_pkt_num[lcore_id] = total_rx;
     tx_pps[lcore_id] = (double)total_tx/time_interval;
-    tx_bps[lcore_id] = (double)length*8/time_interval;
+    rx_pps[lcore_id] = (double)total_rx/time_interval;
+    tx_bps[lcore_id] = (double)total_txB*8/time_interval;
+    rx_bps[lcore_id] = (double)total_rxB*8/time_interval;
 }
 
 static int
@@ -372,9 +451,6 @@ parse_app_opts(int argc, char **argv)
 
 	return ret;
 }
-
-
-
 
 /* Main functional part of port initialization. 8< */
 static inline int
@@ -531,12 +607,32 @@ static void signal_handler(int signum)
     }
 }
 
+#ifdef PCAP_ENABLE
+static int pcap_init(void){
+    //open pcap file
+    const char *pcap_file = PCAP_FILE(FLOW_NUM);
+    char errbuf[PCAP_ERRBUF_SIZE];
+    handle = pcap_open_offline(pcap_file, errbuf);
+    if (handle == NULL) {
+        fprintf(stderr, "Cannot open PCAP file: %s\n", errbuf);
+        return 1;
+    }
+    // // Set the interface to promiscuous mode
+    // if (pcap_set_promisc(handle, 1) != 0)
+    // {
+    //     fprintf(stderr,  "Failed to set promiscuous mode\n");
+    //     return 1;
+    // }
+    return 0;
+}
+#endif
+
 int main(int argc, char *argv[])
 {
     unsigned nb_ports;
     unsigned lcore_id;
     uint32_t n_lcores = 0;
-    int i,j;
+    int i,j;    
     struct timeval timetag;
 
     /* Initialize the Environment Abstraction Layer (EAL). */
@@ -566,6 +662,11 @@ int main(int argc, char *argv[])
     
     printf("core_num:%d\n",n_lcores);
 
+    #ifdef PCAP_ENABLE
+    /* open pcap file */
+    if (pcap_init() != 0)
+        rte_exit(EXIT_FAILURE, "Cannot correctly open pcap file\n");
+    #endif
     gettimeofday(&timetag, NULL);
     rte_eal_mp_remote_launch((lcore_function_t *)launch_one_lcore, NULL, CALL_MAIN);
     RTE_LCORE_FOREACH_WORKER(lcore_id){
@@ -575,62 +676,69 @@ int main(int argc, char *argv[])
         } 
     }
 
+    #ifdef PCAP_ENABLE
+    pcap_close(handle);
+    #endif
+
+
     uint64_t total_tx_pkt_num = 0, total_rx_pkt_num = 0;
     double total_tx_pps = 0.0, total_tx_bps = 0.0;
+    double total_rx_pps = 0.0, total_rx_bps = 0.0;
     FILE *fp;
 
-    if (unlikely(access("../lab_results/pkt_send_mul_auto_sta2/throughput.csv", 0) != 0)){
-        fp = fopen("../lab_results/pkt_send_mul_auto_sta2/throughput.csv", "a+");
+    if (unlikely(access(THROUGHPUT_FILE, 0) != 0)){
+        fp = fopen(THROUGHPUT_FILE, "a+");
+        if(unlikely(fp == NULL)){
+            rte_exit(EXIT_FAILURE, "Cannot open file %s\n", THROUGHPUT_FILE);
+        }
         fprintf(fp, "core,timestamp,flow_num,pkt_len,send_pkts,rcv_pkts,send_pps,send_bps,rcv_pps,rcv_bps\r\n");
     }else{
-        fp = fopen("../lab_results/pkt_send_mul_auto_sta2/throughput.csv", "a+");
+        fp = fopen(THROUGHPUT_FILE, "a+");
     }
     for(i = 0; i < MAX_LCORES; i++){
         total_tx_pkt_num += tx_pkt_num[i];
         total_rx_pkt_num +=rx_pkt_num[i];
         total_tx_pps += tx_pps[i];
         total_tx_bps += tx_bps[i];
+        total_rx_pps += rx_pps[i],
+        total_rx_bps += rx_bps[i];
     }
-    fprintf(fp, "%d,%ld,%d,%d,%ld,%ld,%lf,%lf,0,0\r\n", n_lcores, timetag.tv_sec, FLOW_NUM, PKT_LEN, total_tx_pkt_num, total_rx_pkt_num, total_tx_pps, total_tx_bps);
+    fprintf(fp, "%d,%ld,%d,%d,%ld,%ld,%lf,%lf,%lf,%lf\r\n", \
+            n_lcores, timetag.tv_sec, FLOW_NUM, PKT_LEN, total_tx_pkt_num, total_rx_pkt_num, \
+            total_tx_pps, total_tx_bps, total_rx_pps, total_rx_bps);
     fclose(fp);
-    APP_LOG("Total Sent %ld pkts, received %ld pkts, throughput: %lf pps, %lf bps.\n", total_tx_pkt_num, total_rx_pkt_num, total_tx_pps, total_tx_bps);
+    APP_LOG("Total Sent %ld pkts, received %ld pkts; TX: %lf pps, %lf bps; RX: %lf pps, %lf bps.\n", \
+            total_tx_pkt_num, total_rx_pkt_num, total_tx_pps, total_tx_bps, total_rx_pps, total_rx_bps);
  
-    double to_print;
-
-    if (unlikely(access("../lab_results/pkt_send_mul_auto_sta2/throughput_pps.csv", 0) != 0)){
-        fp = fopen("../lab_results/pkt_send_mul_auto_sta2/throughput_pps.csv", "a+");
-        fprintf(fp, "core,timestamp,flow_num,pkt_len,time,send_pps\r\n");
+    if (unlikely(access(THROUGHPUT_TIME_FILE, 0) != 0)){
+        fp = fopen(THROUGHPUT_TIME_FILE, "a+");
+        fprintf(fp, "core,timestamp,flow_num,pkt_len,time, \
+                     send_pps,send_bps,rcv_pps,rcv_bps\r\n");
     }else{
-        fp = fopen("../lab_results/pkt_send_mul_auto_sta2/throughput_pps.csv", "a+");
+        fp = fopen(THROUGHPUT_TIME_FILE, "a+");
     }
     for (i = 0;i<MAX_RECORD_COUNT;i++){
-        to_print = 0;
+        double tx_pps_p = 0, tx_bps_p = 0;
+        double rx_pps_p = 0, rx_bps_p = 0;
         for (j = 0;j<MAX_LCORES;j++){
-            to_print += tx_pps_timeline[j][i];
+            if(rte_lcore_is_enabled(j)) {
+                tx_pps_p += flowlog_timeline[j][i].tx_pps_t;
+                tx_bps_p += flowlog_timeline[j][i].tx_bps_t;
+                rx_pps_p += flowlog_timeline[j][i].rx_pps_t;
+                rx_bps_p += flowlog_timeline[j][i].rx_bps_t;
+            }
         }
-        fprintf(fp, "%d,%ld,%d,%d,%d,%lf\r\n", n_lcores, timetag.tv_sec, FLOW_NUM, PKT_LEN, i, to_print);
+        fprintf(fp, "%d,%ld,%d,%d,%d,%lf,%lf,%lf,%lf\r\n", \
+                n_lcores, timetag.tv_sec, FLOW_NUM, PKT_LEN, i, \
+                tx_pps_p,tx_bps_p,rx_pps_p,rx_bps_p);
     }
     fclose(fp);
 
-    if (unlikely(access("../lab_results/pkt_send_mul_auto_sta2/throughput_bps.csv", 0) != 0)){
-        fp = fopen("../lab_results/pkt_send_mul_auto_sta2/throughput_bps.csv", "a+");
-        fprintf(fp, "core,timestamp,flow_num,pkt_len,time,send_bps\r\n");
-    }else{
-        fp = fopen("../lab_results/pkt_send_mul_auto_sta2/throughput_bps.csv", "a+");
-    }
-    for (i = 0;i<MAX_RECORD_COUNT;i++){
-        to_print = 0;
-        for (j = 0;j<MAX_LCORES;j++){
-            to_print += tx_bps_timeline[j][i];
+    for (j = 0;j<MAX_LCORES;j++){
+        if(rte_lcore_is_enabled(j)) {
+            free(flowlog_timeline[j]);
         }
-        fprintf(fp, "%d,%ld,%d,%d,%d,%lf\r\n", n_lcores, timetag.tv_sec, FLOW_NUM, PKT_LEN, i, to_print);
     }
-    fclose(fp);
-
-    // /* Calculate minimum TSC diff for returning signed packets */
-    // min_txintv *= rte_get_timer_hz() / US_PER_S;
-    // printf("TSC freq: %lu Hz\n", rte_get_timer_hz());
-
     /* Cleaning up. */
     fflush(stdout);
 APP_RTE_CLEANUP:
@@ -641,3 +749,4 @@ APP_RTE_CLEANUP:
 
     return 0;
 }
+

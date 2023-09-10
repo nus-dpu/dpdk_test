@@ -1,5 +1,4 @@
 #include <stdint.h>
-#include <stdlib.h>
 #include <stdarg.h>
 #include <ctype.h>
 #include <errno.h>
@@ -17,10 +16,8 @@
 #include <rte_prefetch.h>
 #include <rte_ether.h>
 #include <rte_ip.h>
-#include <getopt.h>
-#include <unistd.h> //For sleep()
-#include <math.h> //For pow()
-#include <sys/time.h>
+#include <unistd.h> // For sleep()
+#include <sys/time.h> //For gettimeofday()
 
 #include "para.h"
 
@@ -30,25 +27,38 @@
 #define MAX_LCORES 72
 #define RX_QUEUE_PER_LCORE   1
 #define TX_QUEUE_PER_LCORE   1
-#define MAX_BURST_SIZE       32 //length of queue
+
 #define RX_RING_SIZE 1024
 #define TX_RING_SIZE 1024
 #define NUM_MBUFS 4095
-#define MBUF_SIZE   (10000+sizeof(struct rte_mbuf)+RTE_PKTMBUF_HEADROOM)
+#define MBUF_SIZE   (2048+sizeof(struct rte_mbuf)+RTE_PKTMBUF_HEADROOM)
 #define MBUF_CACHE_SIZE 32
-#define BURST_SIZE 32
-#define PAY_LOAD_LEN (PKT_LEN-28) //udp 
+#define BURST_SIZE 64
 
+#define GET_RTE_HDR(t, h, m, o) \
+    struct t *h = rte_pktmbuf_mtod_offset(m, struct t *, o)
 #define APP_LOG(...) RTE_LOG(INFO, USER1, __VA_ARGS__)
-// #define PRN_COLOR(str) ("\033[0;33m" str "\033[0m")	// Yellow accent
+#define PRN_COLOR(str) ("\033[0;33m" str "\033[0m")	// Yellow accent
 
-#define DEST_IP_PREFIX ((192<<24)) /* dest ip prefix = 192.0.0.0.0 */
-
-#define ZIPF_A 1.25
-#define ZIPF_C 1.0
+#define OFF_ETHHEAD	(sizeof(struct rte_ether_hdr))
+#define OFF_IPV42PROTO (offsetof(struct rte_ipv4_hdr, next_proto_id))
+#define MBUF_IPV4_2PROTO(m)	\
+	rte_pktmbuf_mtod_offset((m), uint8_t *, OFF_ETHHEAD + OFF_IPV42PROTO)
 
 #define THROUGHPUT_FILE "../lab_results/" PROGRAM "/throughput.csv"
 #define THROUGHPUT_TIME_FILE   "../lab_results/" PROGRAM "/throughput_time.csv"
+
+struct rte_eth_conf port_conf = {
+	.rxmode = {
+		.mq_mode = RTE_ETH_MQ_RX_RSS,
+	},
+	.rx_adv_conf = {
+		.rss_conf = {
+			.rss_key = NULL,
+			.rss_hf = RTE_ETH_RSS_IP | RTE_ETH_RSS_TCP | RTE_ETH_RSS_UDP,
+		},
+	},
+};
 
 struct lcore_configuration {
     uint32_t vid; // virtual core id
@@ -59,22 +69,6 @@ struct lcore_configuration {
     uint32_t rx_queue_list[RX_QUEUE_PER_LCORE]; // list of RX queues
 } __rte_cache_aligned;
 
-struct payload {
-    uint32_t flow_size;
-    uint32_t pkt_seq;
-    uint64_t timestamp;
-};
-
-struct flow_table {
-    in_addr_t src_ip;
-    in_addr_t dst_ip;
-    uint16_t src_port;
-    uint16_t dst_port;
-    uint8_t proto_type;
-    uint32_t flow_size;
-    uint32_t pkt_seq;
-};
-
 struct flow_log {
     double tx_pps_t;
     double tx_bps_t;
@@ -82,169 +76,33 @@ struct flow_log {
     double rx_bps_t;
 };
 
-struct rte_ether_addr src_mac;
-struct rte_ether_addr dst_mac;
-
-struct rte_mempool *pktmbuf_pool[MAX_LCORES];
 static unsigned enabled_port = 0;
+static struct rte_ether_addr mac_addr;
 static uint64_t min_txintv = 15/*us*/;	// min cycles between 2 returned packets
 static volatile bool force_quit = false;
 static volatile uint16_t nb_pending = 0;
 
 struct lcore_configuration lcore_conf[MAX_LCORES];
+struct rte_mempool *pktmbuf_pool[MAX_LCORES];
 
 uint64_t tx_pkt_num[MAX_LCORES];
 uint64_t rx_pkt_num[MAX_LCORES];
-double tx_pps[MAX_LCORES];
-double rx_pps[MAX_LCORES];
+uint64_t tx_pps[MAX_LCORES];
+uint64_t rx_pps[MAX_LCORES];
 double tx_bps[MAX_LCORES];
 double rx_bps[MAX_LCORES];
 struct flow_log *flowlog_timeline[MAX_LCORES];
 
-void zipf_generate(double *zipf_cumuP){
-    double sum = 0.0;
-    int i;
+static void swap_ip(struct rte_mbuf *packet_buf){
+    uint8_t *data_ipv4;
+    uint32_t swap_ip;
 
-    for (i = 0; i < FLOW_NUM; i++){         
-        sum += ZIPF_C/pow((double)(i+2), ZIPF_A);
-    }
-    for (i = 0; i < FLOW_NUM; i++){ 
-        double zipf_temp = ZIPF_C/pow((double)(i+2), ZIPF_A);
-        if (i == 0)
-            zipf_cumuP[i] = zipf_temp/sum;
-        else
-            zipf_cumuP[i] = zipf_cumuP[i-1] + zipf_temp/sum;
-    }
+    data_ipv4 = MBUF_IPV4_2PROTO(packet_buf);
+    memcpy(&swap_ip, &data_ipv4[16], sizeof(uint32_t)); //save dst ip to swap
+    memcpy(&data_ipv4[16], &data_ipv4[12], sizeof(uint32_t)); //change dst ip to src ip
+    memcpy(&data_ipv4[12], &swap_ip, sizeof(uint32_t));//change src ip to dst ip
 }
 
-void flow_table_init(struct flow_table* flowtable){
-    int i;
-    in_addr_t dst_ip = inet_addr("192.168.200.1");
-    for(i = 0; i < FLOW_NUM; i++) {
-        flowtable[i].src_ip = DEST_IP_PREFIX + i;
-        flowtable[i].dst_ip = dst_ip;
-        flowtable[i].src_port = 0x162E;
-        flowtable[i].dst_port = 0x1503;
-        flowtable[i].proto_type = 17;
-        flowtable[i].flow_size = FLOW_SIZE;
-        flowtable[i].pkt_seq = 0;
-    }
-}
-
-int zipf_pick(const double *zipf_cumuP){
-    unsigned int seed = rte_rdtsc();
-    int index = 0;
-    double data = (double)rand_r(&seed)/RAND_MAX;  //生成一个0~1的数
-    while (data > zipf_cumuP[index])   //找索引,直到找到一个比他小的值,那么对应的index就是随机数了
-        index++;
-    return index;
-}
-
-uint32_t reversebytes_uint32t(uint32_t value){
-    return (value & 0x000000FFU) << 24 | (value & 0x0000FF00U) << 8 | 
-        (value & 0x00FF0000U) >> 8 | (value & 0xFF000000U) >> 24; 
-}
-
-static inline void
-fill_ethernet_header(struct rte_ether_hdr *eth_hdr) {
-	struct rte_ether_addr s_addr = src_mac; 
-	struct rte_ether_addr d_addr = dst_mac;
-	eth_hdr->src_addr =s_addr;
-	eth_hdr->dst_addr =d_addr;
-	eth_hdr->ether_type = rte_cpu_to_be_16(0x0800);
-}
-
-static inline void
-fill_ipv4_header(struct rte_ipv4_hdr *ipv4_hdr, const struct flow_table *flow) {
-	ipv4_hdr->version_ihl = (4 << 4) + 5; // ipv4, length 5 (*4)
-	ipv4_hdr->type_of_service = 0; // No Diffserv
-	ipv4_hdr->total_length = rte_cpu_to_be_16(PKT_LEN); // tcp 20
-	ipv4_hdr->packet_id = rte_cpu_to_be_16(5462); // set random
-	ipv4_hdr->fragment_offset = rte_cpu_to_be_16(0);
-	ipv4_hdr->time_to_live = 64;
-	ipv4_hdr->next_proto_id = 17; // udp
-	ipv4_hdr->hdr_checksum = rte_cpu_to_be_16(0x0);
-
-    ipv4_hdr->src_addr = rte_cpu_to_be_32(flow->src_ip); 
-	ipv4_hdr->dst_addr = rte_cpu_to_be_32(flow->dst_ip);
-
-	ipv4_hdr->hdr_checksum = rte_cpu_to_be_16(rte_ipv4_cksum(ipv4_hdr));
-}
-
-static inline void
-fill_udp_header(struct rte_udp_hdr *udp_hdr, struct rte_ipv4_hdr *ipv4_hdr, const struct flow_table *flow) {
-    uint16_t src_port = flow->src_port;
-    uint16_t dst_port = flow->dst_port;
-    
-    udp_hdr->src_port = rte_cpu_to_be_16(src_port);
-	udp_hdr->dst_port = rte_cpu_to_be_16(dst_port);
-	udp_hdr->dgram_len = rte_cpu_to_be_16(PKT_LEN - sizeof(struct rte_ipv4_hdr));
-    udp_hdr->dgram_cksum = rte_cpu_to_be_16(0x0);
-	
-	udp_hdr->dgram_cksum = rte_cpu_to_be_16(rte_ipv4_udptcp_cksum(ipv4_hdr, udp_hdr));
-}
-
-static inline void
-fill_tcp_header(struct rte_tcp_hdr *tcp_hdr, struct rte_ipv4_hdr *ipv4_hdr) {
-	tcp_hdr->src_port = rte_cpu_to_be_16(0x162E);
-	tcp_hdr->dst_port = rte_cpu_to_be_16(0x04d2);
-	tcp_hdr->sent_seq = rte_cpu_to_be_32(0);
-	tcp_hdr->recv_ack = rte_cpu_to_be_32(0);
-	tcp_hdr->data_off = 0;
-	tcp_hdr->tcp_flags = 0;
-	tcp_hdr->rx_win = rte_cpu_to_be_16(16);
-	tcp_hdr->cksum = rte_cpu_to_be_16(0x0);
-	tcp_hdr->tcp_urp = rte_cpu_to_be_16(0);
-
-	tcp_hdr->cksum = rte_cpu_to_be_16(rte_ipv4_udptcp_cksum(ipv4_hdr, tcp_hdr));
-}
-
-static inline void
-fill_payload(struct payload *payload_data, struct flow_table *flow) {
-    payload_data->flow_size = flow->flow_size;
-    payload_data->pkt_seq = flow->pkt_seq;
-    payload_data->timestamp = 0; //shoule change later
-    flow->pkt_seq++;
-}
-
-static struct rte_mbuf *make_testpkt(uint32_t queue_id, struct flow_table *flow)
-{
-    
-    struct rte_mbuf *mp = rte_pktmbuf_alloc(pktmbuf_pool[queue_id]);
-
-    uint16_t pkt_len = PKT_LEN+sizeof(struct rte_ether_hdr);
-    char *buf = rte_pktmbuf_append(mp, pkt_len);
-    if (unlikely(buf == NULL)) {
-        APP_LOG("Error: failed to allocate packet buffer.\n");
-        rte_pktmbuf_free(mp);
-        return NULL;
-    }
-
-    mp->data_len = pkt_len;
-    mp->pkt_len = pkt_len;
-    uint16_t curr_ofs = 0;
-
-    struct rte_ether_hdr *ether_h = rte_pktmbuf_mtod_offset(mp, struct rte_ether_hdr *, curr_ofs);
-	fill_ethernet_header(ether_h);
-    curr_ofs += sizeof(struct rte_ether_hdr);
-
-    struct rte_ipv4_hdr *ipv4_h = rte_pktmbuf_mtod_offset(mp, struct rte_ipv4_hdr *, curr_ofs);
-	fill_ipv4_header(ipv4_h, flow);
-    curr_ofs += sizeof(struct rte_ipv4_hdr);
-
-    // struct rte_tcp_hdr *tcp_h = rte_pktmbuf_mtod_offset(mp, struct rte_tcp_hdr *, curr_ofs);
-	// fill_tcp_header(tcp_h, ipv4_h);
-    // curr_ofs += sizeof(struct rte_tcp_hdr);
-
-    struct rte_udp_hdr *udp_h = rte_pktmbuf_mtod_offset(mp, struct rte_udp_hdr *, curr_ofs);
-	fill_udp_header(udp_h, ipv4_h,flow);
-    curr_ofs += sizeof(struct rte_udp_hdr);
-    
-    struct payload * payload_data= rte_pktmbuf_mtod_offset(mp, struct payload *, curr_ofs);
-    fill_payload(payload_data, flow);
-
-    return mp;
-}
 
 /*
  * The lcore main. This is the main thread that does the work, reading from
@@ -258,24 +116,10 @@ static void lcore_main(uint32_t lcore_id)
         printf("WARNING, port %u is on remote NUMA node.\n", enabled_port);
     printf("Core %u forwarding packets. [Ctrl+C to quit]\n", rte_lcore_id());
     fflush(stdout);
-
     /* Run until the application is quit or killed. */
     struct lcore_configuration *lconf = &lcore_conf[lcore_id];
-    struct rte_mbuf *bufs[BURST_SIZE], *bufs_tx[BURST_SIZE];
-    
-    struct flow_table *flowtable = (struct flow_table *) malloc(sizeof(struct flow_table) * FLOW_NUM);
-    if(flowtable == NULL){
-        rte_exit(EXIT_FAILURE, "Cannot alloc memory for pf in %u\n", lcore_id);
-    }
-    flow_table_init(flowtable);
+    struct rte_mbuf *bufs[BURST_SIZE];
 
-    // double* pf = (double*)malloc(sizeof(double) * FLOW_NUM);
-    // if(pf == NULL){
-    //     rte_exit(EXIT_FAILURE, "Cannot alloc memory for pf in %u\n", lcore_id);
-    // }
-    // zipf_generate(pf);
-    
-    uint64_t pkt_makenum = 0;
     uint64_t loop_count = 0;
     uint64_t record_count = 0;
     /* pkts_sta */
@@ -288,6 +132,7 @@ static void lcore_main(uint32_t lcore_id)
     uint64_t start = rte_rdtsc();
     uint64_t time_last_print = start;
     uint64_t time_now;
+    uint64_t pkt_count = 0;
 
     if (unlikely(flowlog_timeline[lcore_id] != NULL)){
         rte_exit(EXIT_FAILURE, "There are error when allocate memory to flowlog.\n");
@@ -297,19 +142,33 @@ static void lcore_main(uint32_t lcore_id)
     }
 
     while (!force_quit && record_count < MAX_RECORD_COUNT) {
-        int i;
+        int i, j;
         for (i = 0; i < lconf->n_rx_queue; i++){
-            int j;
-            for(j = 0; j < BURST_SIZE; j++){
-                bufs_tx[j] = make_testpkt(lconf->rx_queue_list[i], &flowtable[pkt_makenum % FLOW_NUM]);
-                pkt_makenum++;
-            }
-            // Transmit packet
-            uint16_t nb_tx = rte_eth_tx_burst(lconf->port, lconf->tx_queue_list[i], bufs_tx, BURST_SIZE);
-            total_tx += nb_tx;
-            total_txB += (bufs_tx[0]->data_len*nb_tx);
-            if (nb_tx < BURST_SIZE){
-                rte_pktmbuf_free_bulk(bufs_tx + nb_tx, BURST_SIZE - nb_tx);
+            const uint16_t nb_rx = rte_eth_rx_burst(lconf->port, lconf->rx_queue_list[i], bufs, BURST_SIZE);
+            if(nb_rx != 0){
+                total_rxB += (bufs[0]->data_len*nb_rx);
+                for (j = 0; j < nb_rx; j++){
+                    swap_ip(bufs[i]);
+
+                    int a;
+                    printf("the packet %ld:\n", pkt_count);
+                    uint8_t *pkt_p = rte_pktmbuf_mtod(bufs_tx[j], uint8_t *);
+                    for(a = 0; a < 78; a++){
+                        printf("%02x ", pkt_p[a]);
+                        if(a % 16 == 15){
+                            printf("\n");
+                        }
+                    }
+                    pkt_count ++;
+
+                }
+                printf("\n");
+                const uint16_t nb_tx = rte_eth_tx_burst(lconf->port, lconf->tx_queue_list[i], bufs, nb_rx);
+                total_rx += nb_rx;
+                total_tx += nb_tx;    
+                for (j = 0; j < nb_rx; total_rxB += (bufs[j]->data_len), j++);
+                for (j = 0; j < nb_tx; total_rxB += (bufs[j]->data_len), j++);
+                rte_pktmbuf_free_bulk(bufs, nb_rx);
             }
         }
         loop_count++;
@@ -318,36 +177,39 @@ static void lcore_main(uint32_t lcore_id)
         time_now = rte_rdtsc();
         double time_inter_temp=(double)(time_now-time_last_print)/rte_get_timer_hz();
         if (time_inter_temp>=0.5){
-            uint64_t dtx;
-            uint64_t dtxB;
+            uint64_t drx, dtx;
+            uint64_t drxB, dtxB;
 
+            drx = total_rx - last_total_rx;
             dtx = total_tx - last_total_tx;
+            drxB = total_rxB - last_total_rxB;
             dtxB = total_txB - last_total_txB;
 
             time_last_print=time_now;
+            last_total_rx = total_rx;
             last_total_tx = total_tx;
+            last_total_rxB = total_rxB;
             last_total_txB = total_txB;
+
+            flowlog_timeline[lcore_id][record_count].rx_pps_t = (double)drx/time_inter_temp;
             flowlog_timeline[lcore_id][record_count].tx_pps_t = (double)dtx/time_inter_temp;
+            flowlog_timeline[lcore_id][record_count].rx_bps_t = (double)drxB*8/time_inter_temp;
             flowlog_timeline[lcore_id][record_count].tx_bps_t = (double)dtxB*8/time_inter_temp;
 
             record_count++;
         }
-
-        if (pkt_makenum / FLOW_NUM >= FLOW_SIZE){
-            break;
-        }
     }
-    // uint64_t time_interval = rte_rdtsc() - start;
     double time_interval = (double)(rte_rdtsc() - start)/rte_get_timer_hz();
-    APP_LOG("lcoreID %d: run time: %lf.\n", lcore_id, time_interval);
-    APP_LOG("lcoreID %d: Sent %ld pkts, received %ld pkts, TX: %lf pps, %lf bps.\n", \
-            lcore_id, total_tx, total_rx, (double)total_tx/time_interval, (double)total_txB*8/time_interval);
-    APP_LOG("lcoreID %d: times of loop is %ld, should send packets %ld.\n", lcore_id, loop_count, loop_count*BURST_SIZE);
-    tx_pkt_num[lcore_id] = total_tx;
+    APP_LOG("run time: %lf.\n", time_interval);
+    APP_LOG("Sent %ld pkts, received %ld pkts, RX: %lf pps, %lf bps.\n", \
+            total_tx, total_rx, (double)total_rx/time_interval, (double)total_rxB*8/time_interval);
+    APP_LOG("times of loop is %ld, should send packets %ld.\n", loop_count, loop_count*32);
+    // tx_pkt_num[lcore_id] = total_tx;
     rx_pkt_num[lcore_id] = total_rx;
-    tx_pps[lcore_id] = (double)total_tx/time_interval;
-    tx_bps[lcore_id] = (double)total_txB*8/time_interval;
+    rx_pps[lcore_id] = (double)total_rx/time_interval;
+    rx_bps[lcore_id] = (double)total_rxB*8/time_interval;
 }
+
 
 static int
 launch_one_lcore(__attribute__((unused)) void *arg){
@@ -356,73 +218,10 @@ launch_one_lcore(__attribute__((unused)) void *arg){
 	return 0;
 }
 
-int mac_read(char * mac_p, struct rte_ether_addr *mac_addr){
-    char mac_char[20];
-    char *pchStr;	
-    int  nTotal = 0;
-
-    strcpy(mac_char, mac_p);
-    pchStr = strtok(mac_char, ":");
-	
-    while (NULL != pchStr)
-	{
-    	mac_addr->addr_bytes[nTotal++] = strtol(pchStr,NULL,16);
-
-    	pchStr = strtok(NULL, ":");
-	}
-}
-
-/* Parse the argument given in the command line of the application */
-static int
-parse_app_opts(int argc, char **argv)
-{
-	int opt, ret;
-	char **argvopt;
-	int option_index = 0;
-	char *prgname = argv[0];
-	static struct option long_options[] = {
-		{"srcmac", 1, NULL, '1'},
-        {"dstmac", 1, NULL, '2'}
-
-	};
-
-	argvopt = argv;
-
-	while ((opt = getopt_long(argc, argvopt, "1:2:",
-				  long_options, &option_index)) != EOF) {
-
-		switch (opt) {
-		/* portmask */
-		case '1':
-            mac_read(optarg, &src_mac);
-			break;
-		case '2':
-            mac_read(optarg, &dst_mac);
-			break;
-		/* long options */
-		default:
-			rte_exit(EXIT_FAILURE, "Error: Wrong use of application arguments\n");
-			return -1;
-		}
-	}
-
-	if (optind >= 0)
-		argv[optind-1] = prgname;
-
-	ret = optind-1;
-	optind = 1; /* reset getopt lib */
-
-	return ret;
-}
-
-
-
-
 /* Main functional part of port initialization. 8< */
 static inline int
 port_init(uint16_t port, uint32_t *n_lcores_p)
 {
-	struct rte_eth_conf port_conf;
 	uint16_t rx_rings = 0, tx_rings = 0;
 	uint16_t nb_rxd = RX_RING_SIZE;
 	uint16_t nb_txd = TX_RING_SIZE;
@@ -437,8 +236,6 @@ port_init(uint16_t port, uint32_t *n_lcores_p)
 
 	if (!rte_eth_dev_is_valid_port(port))
 		return -1;
-
-	memset(&port_conf, 0, sizeof(struct rte_eth_conf));
 
 	retval = rte_eth_dev_info_get(port, &dev_info);
 	if (retval != 0) {
@@ -501,7 +298,7 @@ port_init(uint16_t port, uint32_t *n_lcores_p)
 	/* Allocate and set up 1 RX queue per Ethernet port. */
 	for (q = 0; q < rx_rings; q++) {
         // create mbuf pool
-        printf("create mbuf_pool_%d\n",q);
+        printf("create mbuf pool\n");
         char name[50];
         sprintf(name,"mbuf_pool_%d",q);
         pktmbuf_pool[q] = rte_mempool_create(
@@ -562,6 +359,7 @@ port_init(uint16_t port, uint32_t *n_lcores_p)
 
 	return 0;
 }
+
 /* >8 End of main functional part of port initialization. */
 
 
@@ -577,8 +375,8 @@ int main(int argc, char *argv[])
 {
     unsigned nb_ports;
     unsigned lcore_id;
+    int i, j;
     uint32_t n_lcores = 0;
-    int i,j;    
     struct timeval timetag;
 
     /* Initialize the Environment Abstraction Layer (EAL). */
@@ -587,10 +385,17 @@ int main(int argc, char *argv[])
     argc -= ret; argv += ret;
 
     /* Parse app-specific arguments. */
-	/* parse application arguments (after the EAL ones) */
-	ret = parse_app_opts(argc, argv);
-	if (ret < 0)
-		rte_exit(EXIT_FAILURE, "Error: Wrong use of application arguments\n");
+    static const char user_opts[] = "p:";	// port_num
+    int opt;
+    while ((opt = getopt(argc, argv, user_opts)) != EOF) {
+        switch (opt) {
+        case 'p':
+            if (optarg[0] == '\0') rte_exit(EXIT_FAILURE, "Invalid port\n");
+            enabled_port = strtoul(optarg, NULL, 10);
+            break;
+        default: rte_exit(EXIT_FAILURE, "Invalid arguments\n");
+        }
+    }
 
     /* Setup signal handler. */
     force_quit = false;
@@ -605,7 +410,12 @@ int main(int argc, char *argv[])
     /* Initialize the ports. */
     if (port_init(enabled_port, &n_lcores) != 0)
         rte_exit(EXIT_FAILURE, "Cannot init port %u\n", enabled_port);
-    
+
+    /* Calculate minimum TSC diff for returning signed packets */
+    min_txintv *= rte_get_timer_hz() / US_PER_S;
+    printf("TSC freq: %lu Hz\n", rte_get_timer_hz());
+
+    /* Call lcore_main on the main core only. */
     printf("core_num:%d\n",n_lcores);
 
     gettimeofday(&timetag, NULL);
@@ -617,8 +427,9 @@ int main(int argc, char *argv[])
         } 
     }
 
+    /*output statics*/
     uint64_t total_tx_pkt_num = 0, total_rx_pkt_num = 0;
-    double total_tx_pps = 0.0, total_tx_bps = 0.0;
+    double total_rx_pps = 0.0, total_rx_bps = 0.0;
     FILE *fp;
 
     if (unlikely(access(THROUGHPUT_FILE, 0) != 0)){
@@ -626,38 +437,43 @@ int main(int argc, char *argv[])
         if(unlikely(fp == NULL)){
             rte_exit(EXIT_FAILURE, "Cannot open file %s\n", THROUGHPUT_FILE);
         }
-        fprintf(fp, "core,timestamp,flow_num,pkt_len,send_pkts,rcv_pkts,send_pps,send_bps,rcv_pps,rcv_bps\r\n");
+        fprintf(fp, "core,timestamp,send_pkts,rcv_pkts,send_pps,send_bps,rcv_pps,rcv_bps\r\n");
     }else{
         fp = fopen(THROUGHPUT_FILE, "a+");
     }
+
     for(i = 0; i < MAX_LCORES; i++){
         total_tx_pkt_num += tx_pkt_num[i];
         total_rx_pkt_num +=rx_pkt_num[i];
-        total_tx_pps += tx_pps[i];
-        total_tx_bps += tx_bps[i];
+        total_rx_pps += rx_pps[i];
+        total_rx_bps += rx_bps[i];
     }
-    fprintf(fp, "%d,%ld,%d,%d,%ld,%ld,%lf,%lf,0,0\r\n", \
-            n_lcores, timetag.tv_sec, FLOW_NUM, PKT_LEN, total_tx_pkt_num, total_rx_pkt_num, total_tx_pps, total_tx_bps);
+    fprintf(fp, "%d,%ld,%ld,%ld,0,0,%lf,%lf\r\n", \
+            n_lcores, timetag.tv_sec, total_tx_pkt_num, total_rx_pkt_num, total_rx_pps, total_rx_bps);
     fclose(fp);
-    APP_LOG("Total Sent %ld pkts, received %ld pkts, TX: %lf pps, %lf bps.\n", \
-            total_tx_pkt_num, total_rx_pkt_num, total_tx_pps, total_tx_bps);
- 
+    APP_LOG("Total Sent %ld pkts, received %ld pkts, RX: %lf pps, %lf bps.\n", \
+            total_tx_pkt_num, total_rx_pkt_num, total_rx_pps, total_rx_bps);
+
     if (unlikely(access(THROUGHPUT_TIME_FILE, 0) != 0)){
         fp = fopen(THROUGHPUT_TIME_FILE, "a+");
-        fprintf(fp, "core,timestamp,flow_num,pkt_len,time,send_pps,send_bps,rcv_pps,rcv_bps\r\n");
+        fprintf(fp, "core,timestamp,time,send_pps,send_bps,rcv_pps,rcv_bps\r\n");
     }else{
         fp = fopen(THROUGHPUT_TIME_FILE, "a+");
     }
     for (i = 0;i<MAX_RECORD_COUNT;i++){
+        double rx_pps_p = 0, rx_bps_p = 0;
         double tx_pps_p = 0, tx_bps_p = 0;
+
         for (j = 0;j<MAX_LCORES;j++){
             if(rte_lcore_is_enabled(j)) {
+                rx_pps_p += flowlog_timeline[j][i].rx_pps_t;
                 tx_pps_p += flowlog_timeline[j][i].tx_pps_t;
-                tx_bps_p += flowlog_timeline[j][i].tx_pps_t;
+                rx_bps_p += flowlog_timeline[j][i].rx_bps_t;
+                tx_bps_p += flowlog_timeline[j][i].tx_bps_t;
             }
         }
-        fprintf(fp, "%d,%ld,%d,%d,%d,%lf,%lf,0,0\r\n", \
-                n_lcores, timetag.tv_sec, FLOW_NUM, PKT_LEN, i, tx_pps_p, tx_bps_p);
+        fprintf(fp, "%d,%ld,%d,%lf,%lf,%lf,%lf\r\n", \
+                n_lcores, timetag.tv_sec, i, tx_pps_p, tx_bps_p,rx_pps_p, rx_bps_p);
     }
     fclose(fp);
 
@@ -666,9 +482,6 @@ int main(int argc, char *argv[])
             free(flowlog_timeline[j]);
         }
     }
-    // /* Calculate minimum TSC diff for returning signed packets */
-    // min_txintv *= rte_get_timer_hz() / US_PER_S;
-    // printf("TSC freq: %lu Hz\n", rte_get_timer_hz());
 
     /* Cleaning up. */
     fflush(stdout);
