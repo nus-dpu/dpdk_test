@@ -41,9 +41,12 @@
 #define PRN_COLOR(str) ("\033[0;33m" str "\033[0m")	// Yellow accent
 
 #define OFF_ETHHEAD	(sizeof(struct rte_ether_hdr))
-#define OFF_IPV42PROTO (offsetof(struct rte_ipv4_hdr, next_proto_id))
-#define MBUF_IPV4_2PROTO(m)	\
-	rte_pktmbuf_mtod_offset((m), uint8_t *, OFF_ETHHEAD + OFF_IPV42PROTO)
+#define OFF_IPV42SRCIP (offsetof(struct rte_ipv4_hdr, hdr_checksum))
+#define OFF_IPV42DSTIP (offsetof(struct rte_ipv4_hdr, src_addr))
+
+#define MBUF_IPV4_2P(m, p)	\
+	rte_pktmbuf_mtod_offset((m), uint8_t *, OFF_ETHHEAD + p)
+#define IP_LEN ((32/8))
 
 #define THROUGHPUT_FILE "../lab_results/" PROGRAM "/throughput.csv"
 #define THROUGHPUT_TIME_FILE   "../lab_results/" PROGRAM "/throughput_time.csv"
@@ -94,23 +97,10 @@ double rx_bps[MAX_LCORES];
 struct flow_log *flowlog_timeline[MAX_LCORES];
 
 static void swap_ip(struct rte_mbuf *packet_buf){
-    uint8_t *data_ipv4;
-    uint32_t swap_ip;
-
-    data_ipv4 = MBUF_IPV4_2PROTO(packet_buf);
-    
-    int a;
-    for(a = 0; a < 20; a++){
-        printf("%02x ", data_ipv4[a]);
-        if(a % 4 == 3){
-            printf("\n");
-        }
-    }
-
-
-    memcpy(&swap_ip, &data_ipv4[16], sizeof(uint32_t)); //save dst ip to swap
-    memcpy(&data_ipv4[16], &data_ipv4[12], sizeof(uint32_t)); //change dst ip to src ip
-    memcpy(&data_ipv4[12], &swap_ip, sizeof(uint32_t));//change src ip to dst ip
+    struct rte_ipv4_hdr *ipv4_h = rte_pktmbuf_mtod_offset(packet_buf, struct rte_ipv4_hdr *, sizeof(struct rte_ether_hdr));
+    uint32_t temp_ip = ipv4_h->src_addr;
+    ipv4_h->src_addr = ipv4_h->dst_addr;
+    ipv4_h->dst_addr = temp_ip;
 }
 
 
@@ -158,7 +148,7 @@ static void lcore_main(uint32_t lcore_id)
             if(nb_rx != 0){
                 total_rxB += (bufs[0]->data_len*nb_rx);
                 for (j = 0; j < nb_rx; j++){
-                    swap_ip(bufs[i]);
+                    swap_ip(bufs[j]);
 
                     int a;
                     printf("the packet %ld:\n", pkt_count);
@@ -169,6 +159,7 @@ static void lcore_main(uint32_t lcore_id)
                             printf("\n");
                         }
                     }
+
                     pkt_count ++;
 
                 }
