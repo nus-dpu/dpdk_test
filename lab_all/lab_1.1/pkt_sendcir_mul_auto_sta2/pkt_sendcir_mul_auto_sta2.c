@@ -332,7 +332,7 @@ static void lcore_main(uint32_t lcore_id)
                                    BURST_SIZE);
             #endif
             // Transmit packet
-            if (send_pkt >= PKTS_NUM){
+            if (send_pkt <= PKTS_NUM){
                 for (j = 0; j < BURST_SIZE; j++){
                     struct flow flow_id;
                     struct flow_info flow_info;
