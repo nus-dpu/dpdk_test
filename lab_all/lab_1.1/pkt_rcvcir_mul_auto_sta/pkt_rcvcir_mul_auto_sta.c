@@ -152,7 +152,7 @@ static void lcore_main(uint32_t lcore_id)
 
                     int a;
                     printf("the packet %ld:\n", pkt_count);
-                    uint8_t *pkt_p = rte_pktmbuf_mtod(bufs_tx[j], uint8_t *);
+                    uint8_t *pkt_p = rte_pktmbuf_mtod(bufs[j], uint8_t *);
                     for(a = 0; a < 78; a++){
                         printf("%02x ", pkt_p[a]);
                         if(a % 16 == 15){

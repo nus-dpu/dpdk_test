@@ -45,8 +45,8 @@
 #define TO_STRING(a) #a
 #define STRING_THRANFER(a) TO_STRING(a)
 
-#define SRC_IP_PREFIX ((192<<24)) /* dest ip prefix = 192.0.0.0.0 */
-#define DEST_IP_PREFIX ((193<<24)) /* dest ip prefix = 192.0.0.0.0 */
+#define SRC_IP_PREFIX ((192<<24)) 
+#define DEST_IP_PREFIX ((193<<24)) 
 
 #define THROUGHPUT_FILE "../lab_results/" PROGRAM "/throughput.csv"
 #define THROUGHPUT_TIME_FILE   "../lab_results/" PROGRAM "/throughput_time.csv"
@@ -310,8 +310,8 @@ static void lcore_main(uint32_t lcore_id)
             #endif
             for (j = 0; j < BURST_SIZE; j++){
                 struct flow flow_id;
-                flow_id.src_ip = SRC_IP_PREFIX + (pkt_count % FLOW_NUM);
-                flow_id.dst_ip = ((192<<24 + 168<<16 + 200<<8)) + 1;
+                flow_id.src_ip = SRC_IP_PREFIX + (uint32_t)(pkt_count % FLOW_NUM);
+                flow_id.dst_ip = ((192<<24) + (168<<16) + (200<<8)) + 1;
                 flow_id.src_port = 1234;
                 flow_id.dst_port = 4321;
                 
