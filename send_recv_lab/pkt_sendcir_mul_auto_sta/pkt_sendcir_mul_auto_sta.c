@@ -45,8 +45,8 @@
 #define TO_STRING(a) #a
 #define STRING_THRANFER(a) TO_STRING(a)
 
-#define SRC_IP_PREFIX ((192<<24)) /* dest ip prefix = 192.0.0.0.0 */
-#define DEST_IP_PREFIX ((193<<24)) /* dest ip prefix = 192.0.0.0.0 */
+#define SRC_IP_PREFIX ((192<<24)) 
+#define DEST_IP_PREFIX ((193<<24)) 
 
 #define THROUGHPUT_FILE "../lab_results/" PROGRAM "/throughput.csv"
 #define THROUGHPUT_TIME_FILE   "../lab_results/" PROGRAM "/throughput_time.csv"
@@ -308,40 +308,50 @@ static void lcore_main(uint32_t lcore_id)
                                    bufs_tx, 
                                    BURST_SIZE);
             #endif
-            for (j = 0; j < BURST_SIZE; j++){
-                struct flow flow_id;
-                flow_id.src_ip = SRC_IP_PREFIX + (pkt_count % FLOW_NUM);
-                flow_id.dst_ip = ((192<<24 + 168<<16 + 200<<8)) + 1;
-                flow_id.src_port = 1234;
-                flow_id.dst_port = 4321;
+            // // Transmit packet
+            // for (j = 0; j < BURST_SIZE; j++){
+            //     struct flow flow_id;
+            //     flow_id.src_ip = SRC_IP_PREFIX + (uint32_t)(pkt_count % FLOW_NUM);
+            //     flow_id.dst_ip = ((192<<24) + (168<<16) + (200<<8)) + 1;
+            //     flow_id.src_port = 1234;
+            //     flow_id.dst_port = 4321;
                 
-                #ifndef PCAP_ENABLE
-                bufs_tx[j] = make_testpkt(lconf->rx_queue_list[i], &flow_id);
-                #endif
+            //     #ifndef PCAP_ENABLE
+            //     bufs_tx[j] = make_testpkt(lconf->rx_queue_list[i], &flow_id);
+            //     #endif
 
-                /* packet copy from buffer to send*/
-                // rte_memcpy(rte_pktmbuf_mtod(bufs_tx[j], void *), 
-                //            rte_pktmbuf_mtod(pkt_buffer[queue_id].mbufs[pkt_count], void*), 
-                //            pkt_buffer[queue_id].mbufs[pkt_count]->data_len); 
-                // bufs_tx[j]->pkt_len = pkt_buffer[queue_id].mbufs[pkt_count]->pkt_len;
-                // bufs_tx[j]->data_len = pkt_buffer[queue_id].mbufs[pkt_count]->data_len;
+            //     /* packet copy from buffer to send*/
+            //     // rte_memcpy(rte_pktmbuf_mtod(bufs_tx[j], void *), 
+            //     //            rte_pktmbuf_mtod(pkt_buffer[queue_id].mbufs[pkt_count], void*), 
+            //     //            pkt_buffer[queue_id].mbufs[pkt_count]->data_len); 
+            //     // bufs_tx[j]->pkt_len = pkt_buffer[queue_id].mbufs[pkt_count]->pkt_len;
+            //     // bufs_tx[j]->data_len = pkt_buffer[queue_id].mbufs[pkt_count]->data_len;
                 
-                txB[j] = bufs_tx[j]->data_len;
+            //     txB[j] = bufs_tx[j]->data_len;
+            //     pkt_count++;
+            // }
 
-                pkt_count++;
-            }
-
-            // Transmit packet
-            uint16_t nb_tx = rte_eth_tx_burst(lconf->port, lconf->tx_queue_list[i], bufs_tx, BURST_SIZE);
-            total_tx += nb_tx;
-            for (j = 0; j < nb_tx; total_txB += txB[j], j++)
-            if (nb_tx < BURST_SIZE){
-                rte_pktmbuf_free_bulk(bufs_tx + nb_tx, BURST_SIZE - nb_tx);
-            }
+            // uint16_t nb_tx = rte_eth_tx_burst(lconf->port, lconf->tx_queue_list[i], bufs_tx, BURST_SIZE);
+            // total_tx += nb_tx;
+            // for (j = 0; j < nb_tx; total_txB += txB[j], j++)
+            // if (nb_tx < BURST_SIZE){
+            //     rte_pktmbuf_free_bulk(bufs_tx + nb_tx, BURST_SIZE - nb_tx);
+            // }
             //Receive packets
             const uint16_t nb_rx = rte_eth_rx_burst(lconf->port, lconf->rx_queue_list[i], bufs_rx, BURST_SIZE);
             total_rx += nb_rx;
             for (j = 0; j < nb_rx; total_txB += bufs_rx[j]->data_len, j++)
+            for (j = 0; j < nb_rx; j++){
+                int a;
+                printf("the packet %ld:\n", pkt_count);
+                uint8_t *pkt_p = rte_pktmbuf_mtod(bufs_rx[j], uint8_t *);
+                for(a = 0; a < 34; a++){
+                    printf("%02x ", pkt_p[a]);
+                    if(a % 16 == 15){
+                        printf("\n");
+                    }
+                }
+            }
             if (nb_rx > 0){
                 rte_pktmbuf_free_bulk(bufs_rx, nb_rx);
             }

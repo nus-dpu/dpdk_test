@@ -149,17 +149,15 @@ static void lcore_main(uint32_t lcore_id)
                 total_rxB += (bufs[0]->data_len*nb_rx);
                 for (j = 0; j < nb_rx; j++){
                     swap_ip(bufs[j]);
-
-                    int a;
-                    printf("the packet %ld:\n", pkt_count);
-                    uint8_t *pkt_p = rte_pktmbuf_mtod(bufs[j], uint8_t *);
-                    for(a = 0; a < 78; a++){
-                        printf("%02x ", pkt_p[a]);
-                        if(a % 16 == 15){
-                            printf("\n");
-                        }
-                    }
-
+                    // int a;
+                    // printf("the packet %ld:\n", pkt_count);
+                    // uint8_t *pkt_p = rte_pktmbuf_mtod(bufs[j], uint8_t *);
+                    // for(a = 0; a < 78; a++){
+                    //     printf("%02x ", pkt_p[a]);
+                    //     if(a % 16 == 15){
+                    //         printf("\n");
+                    //     }
+                    // }
                     pkt_count ++;
 
                 }
