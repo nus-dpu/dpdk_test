@@ -31,7 +31,7 @@ sudo /home/ubuntu/software/ovs_all/ovs_install/usr/bin/ovs-ofctl del-flows ovsdp
 echo "finish del"
 
 O_CIRCLE_NUM=1
-I_CIRCLE_NUM=1
+I_CIRCLE_NUM=100
 for((i=0;i<$O_CIRCLE_NUM;i++));
 do
   rm rule_$i.txt
