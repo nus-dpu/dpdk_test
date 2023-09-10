@@ -2,7 +2,7 @@
 file=pkt_sendcir_mul_auto_sta2
 remotefile=pkt_rcvcir_mul_auto_sta
 lab="lab_1.1"
-run_path="/home/qyn/software/FastNIC/lab_all/${lab}.1"
+run_path="/home/qyn/software/FastNIC/lab_all/${lab}"
 
 ovs_path="/home/ubuntu/software/FastNIC/lab_results/ovs_log"
 

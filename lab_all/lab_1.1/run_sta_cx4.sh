@@ -15,6 +15,15 @@ then
     password="nesc77qq"
 fi
 
+if [[ ! -d "./lab_results/ovslog" ]]
+then
+    mkdir -p ./lab_results/ovslog
+fi
+
+if [[ ! -d "./lab_results/log" ]]
+then
+    mkdir -p ./lab_results/log
+fi
 
 core_id="0"
 flow_num=-1
@@ -32,7 +41,7 @@ ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-vsctl --no-wait set Open_vSwitch . othe
 ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-ofctl del-flows ovsdpdk"
 ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-ctl restart --system-id=random"
 ssh ubuntu@10.15.198.148 "cd ~/software/FastNIC/lab_all/lab_1.1 && ./myovs_rule_install.sh "
-for test in {0..18}
+for test in {0..2}
 do
     flow_size=${flow_size_list[$test]}
 

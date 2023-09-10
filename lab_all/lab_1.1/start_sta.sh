@@ -96,9 +96,17 @@ then
     make clean
     make
     sudo ./build/$file_name -l ${core_id} -a ${src_pci} -- --srcmac ${src_mac} --dstmac ${dst_mac} 
+elif [[ ${file_name} == "pkt_sendcir_mul_auto_sta2" ]]
+then
+    sed -i "s/#define FLOW_SIZE.*$/#define FLOW_SIZE ${flow_size}/" para.h
+    sed -i "s/#define MAX_RECORD_COUNT.*$/#define MAX_RECORD_COUNT ${test_time}/" para.h
+    make clean
+    make
+    sudo ./build/$file_name -l ${core_id} -a ${src_pci} -- --srcmac ${src_mac} --dstmac ${dst_mac} 
 elif [[ ${file_name} == "pkt_rcv_mul_auto_sta" || \
         ${file_name} == "pkt_rcv_mul_auto_sta3" || \
-        ${file_name} == "pkt_looprcv_mul_sta" ]]
+        ${file_name} == "pkt_looprcv_mul_sta" || \
+        ${file_name} == "pkt_rcvcir_mul_auto_sta" ]]
 then
     sed -i "s/#define MAX_RECORD_COUNT.*$/#define MAX_RECORD_COUNT ${test_time}/" para.h
     make clean
