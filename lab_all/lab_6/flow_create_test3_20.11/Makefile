@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright 2017 Mellanox Technologies, Ltd
 
-APP = flow_create_test3_10.11
+APP = flow_create_test3_20.11
 
-SRCS-y := flow_create_test3_10.11.c
+SRCS-y := flow_create_test3_20.11.c
 
 PKGCONF ?= pkg-config
 

@@ -1,4 +1,4 @@
-file_name=flow_create_test3_10.11
+file_name=flow_create_test3_20.11
 
 if [[ ! -d "../lab_results/${file_name}" ]]
 then
