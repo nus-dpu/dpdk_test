@@ -165,7 +165,7 @@ static void lcore_main(uint32_t lcore_id){
 	double rte_time_all = 0;
 	if (unlikely(access(RUN_TIME_FILE, 0) != 0)){
         fp = fopen(RUN_TIME_FILE, "a+");
-        fprintf(fp, "base_flow_num, test_flow_num, index, run_time, rte_create_time\r\n");
+        fprintf(fp, "base_flow_num,test_flow_num,index,run_time,rte_create_time\r\n");
     }else{
         fp = fopen(RUN_TIME_FILE, "a+");
     }
