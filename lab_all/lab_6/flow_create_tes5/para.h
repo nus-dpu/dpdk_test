@@ -1,2 +1,0 @@
-#define FLOW_NUM 10000000
-#define GROUP_ID 0

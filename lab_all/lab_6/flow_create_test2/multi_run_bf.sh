@@ -1,12 +1,40 @@
-run_path="/home/qyn/software/FastNIC"
+file_name="flow_create_test2"
 
-ssh qyn@192.168.100.1 "cd $run_path && rm -f ./lab_results/flow_create_test2/run_time*"
+if [[ ! -d "../lab_results/${file_name}" ]]
+then
+    mkdir -p ../lab_results/${file_name}
+fi
+
+# rm -f ../lab_results/${file_name}/*.csv
+# make clean
+# make
+
+# for i in $(seq 1 20)
+# do
+#     rm -f ../lab_results/${file_name}/run_time.csv
+#     sudo ./build/${file_name} -l 0 -a 0000:17:00.0
+#     mv ../lab_results/${file_name}/run_time.csv ../lab_results/${file_name}/run_time_${i}.csv
+# done
+
+rm -f ../lab_results/${file_name}/*.csv
+
+sed -i "s/#define GROUP_ID.*$/#define GROUP_ID 0/" para.h
+make clean
 make
+# sudo ./build/${file_name} -l 0 -a 0000:17:00.0 #160 cx5
+sudo ./build/${file_name} -l 0 -a 03:00.0 #160 cx5
+mv ../lab_results/${file_name}/run_time.csv ../lab_results/${file_name}/run_time_group0.csv
 
-for i in $(seq 1 3)
-do
-    rm -f ../lab_results/flow_create_test2/run_time.csv
-    sudo ./build/flow_create_test2 -l 0 -a 03:00.0
-    echo "scp ../lab_results/flow_create_test2/run_time.csv qyn@192.168.100.1:$run_path/lab_results/flow_create_test2/run_time_${i}.csv"
-    scp ../lab_results/flow_create_test2/run_time.csv qyn@192.168.100.1:$run_path/lab_results/flow_create_test2/run_time_${i}.csv
-done
+sed -i "s/#define GROUP_ID.*$/#define GROUP_ID 1/" para.h
+make clean
+make
+# sudo ./build/${file_name} -l 0 -a 0000:17:00.0 #160 cx5
+sudo ./build/${file_name} -l 0 -a 03:00.0 #160 cx5
+mv ../lab_results/${file_name}/run_time.csv ../lab_results/${file_name}/run_time_group1.csv
+
+sed -i "s/#define GROUP_ID.*$/#define GROUP_ID 2/" para.h
+make clean
+make
+# sudo ./build/${file_name} -l 0 -a 0000:17:00.0 #160 cx5
+sudo ./build/${file_name} -l 0 -a 03:00.0 #160 cx5
+mv ../lab_results/${file_name}/run_time.csv ../lab_results/${file_name}/run_time_group2.csv

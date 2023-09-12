@@ -31,6 +31,7 @@
 
 #include "flow_blocks.c"
 #include "packet_make.c"
+#include "para.h"
 
 #define NUM_MBUFS 8191
 #define MBUF_CACHE_SIZE 250
@@ -47,7 +48,6 @@
 #define FULL_MASK 0xffffffff /* full mask */
 #define EMPTY_MASK 0x0 /* empty mask */
 
-#define FLOW_NUM 10000000
 #define BURST_SIZE 32
 
 struct lcore_configuration {
@@ -136,9 +136,9 @@ static void lcore_main(uint32_t lcore_id){
 			       error.message ? error.message : "(no stated reason)");
 			break;
 		}
-		else{
-			printf("already add %d flows, add time is %lf\n", i+1, add_time);
-		}
+		// else{
+		// 	printf("already add %d flows, add time is %lf\n", i+1, add_time);
+		// }
 	}
 
 	if (unlikely(access("../lab_results/flow_create_test2/run_time.csv", 0) != 0)){

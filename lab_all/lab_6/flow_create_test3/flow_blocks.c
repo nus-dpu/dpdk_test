@@ -19,7 +19,7 @@ generate_ipv4_udp_flow(uint16_t port_id, uint16_t rx_q,
 		uint32_t src_ip, uint32_t src_mask,
 		uint32_t dest_ip, uint32_t dest_mask,
 		uint16_t udp_src_port, uint16_t udp_dst_port,
-		struct rte_flow_error *error);
+		struct rte_flow_error *error, double *add_time);
 
 
 /**
@@ -128,7 +128,7 @@ generate_ipv4_udp_flow(uint16_t port_id, uint16_t rx_q,
 		uint32_t src_ip, uint32_t src_mask,
 		uint32_t dest_ip, uint32_t dest_mask,
 		uint16_t udp_src_port, uint16_t udp_dst_port,
-		struct rte_flow_error *error)
+		struct rte_flow_error *error, double *add_time)
 {
 	/* Declaring structs being used. 8< */
 	struct rte_flow_attr attr;
@@ -151,7 +151,7 @@ generate_ipv4_udp_flow(uint16_t port_id, uint16_t rx_q,
 	memset(&attr, 0, sizeof(struct rte_flow_attr));
 	attr.priority = 0;
 	attr.ingress = 1;
-	attr.group = GROUP_ID;
+	attr.group = GROUP_ID; /* set the rule on the main group. */
 	/* >8 End of setting the rule attribute. */
 
 	/*
@@ -211,9 +211,10 @@ generate_ipv4_udp_flow(uint16_t port_id, uint16_t rx_q,
 
 	/* Validate the rule and create it. 8< */
 	res = rte_flow_validate(port_id, &attr, pattern, action, error);
+	uint64_t start = rte_rdtsc();
 	if (!res)
 		flow = rte_flow_create(port_id, &attr, pattern, action, error);
-
+	*add_time=(double)(rte_rdtsc() - start) / rte_get_timer_hz();
 	/* >8 End of validation the rule and create it. */
 
 	return flow;
