@@ -76,7 +76,7 @@ ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-vsctl --no-wait set Open_vSwitch . othe
 ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-ofctl del-flows ovsdpdk"
 ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-ctl restart --system-id=random"
 ssh ubuntu@10.15.198.148 "cd ~/software/FastNIC/auto_run/ && ./myovs_rule_install2.sh "
-for test in {0..18}
+for test in {0..${#flow_size_list[@]}}
 do
     flow_size=${flow_size_list[$test]}
     srcip_num=${srcip_num_list[$test]}
