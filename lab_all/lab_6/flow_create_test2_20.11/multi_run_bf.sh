@@ -18,6 +18,8 @@ fi
 
 rm -f ../lab_results/${file_name}/*.csv
 
+sed -i "s/#define FLOW_NUM.*$/#define FLOW_NUM 2000000/" para.h
+
 sed -i "s/#define GROUP_ID.*$/#define GROUP_ID 0/" para.h
 make clean
 make
