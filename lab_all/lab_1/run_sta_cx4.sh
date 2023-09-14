@@ -37,7 +37,8 @@ i=0
 ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-vsctl --no-wait set Open_vSwitch . other_config:hw-offload=true"
 ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-ofctl del-flows ovsdpdk"
 ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-ctl restart --system-id=random"
-ssh ubuntu@10.15.198.148 "cd ~/software/FastNIC/lab_all/${lab} && ./myovs_rule_install2.sh "
+# ssh ubuntu@10.15.198.148 "cd ~/software/FastNIC/lab_all/${lab} && ./myovs_rule_install2.sh "
+ssh ubuntu@10.15.198.148 "cd ~/software/FastNIC/lab_all/${lab} && ./myovs_rule_install2_quick.sh "
 
 for ((test=0; test<${#flow_size_list[@]}; test++))
 do
@@ -78,8 +79,9 @@ done
 ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-vsctl --no-wait set Open_vSwitch . other_config:hw-offload=false"
 ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-ofctl del-flows ovsdpdk"
 ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-ctl restart --system-id=random"
-# ssh ubuntu@10.15.198.148 "cd ~/software/FastNIC/auto_run/ && ./myovs_rule_install2.sh "
-ssh ubuntu@10.15.198.148 "cd ~/software/FastNIC/auto_run/ && ./myovs_rule_install2_quick.sh "
+# ssh ubuntu@10.15.198.148 "cd ~/software/FastNIC/lab_all/${lab} && ./myovs_rule_install2.sh "
+ssh ubuntu@10.15.198.148 "cd ~/software/FastNIC/lab_all/${lab} && ./myovs_rule_install2_quick.sh "
+
 for ((test=0; test<${#flow_size_list[@]}; test++))
 do
     flow_size=${flow_size_list[$test]}
