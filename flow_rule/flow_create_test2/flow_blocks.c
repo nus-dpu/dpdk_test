@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: BSD-3-Clause
  * Copyright 2017 Mellanox Technologies, Ltd
  */
+#include "para.h"
 
 #define IPV4_PATTERN_NUM		3
 #define IPV4_ACTION_NUM		2
@@ -150,7 +151,7 @@ generate_ipv4_udp_flow(uint16_t port_id, uint16_t rx_q,
 	memset(&attr, 0, sizeof(struct rte_flow_attr));
 	attr.priority = 0;
 	attr.ingress = 1;
-	attr.group = 1;
+	attr.group = GROUP_ID;
 	/* >8 End of setting the rule attribute. */
 
 	/*

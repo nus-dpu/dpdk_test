@@ -1,4 +1,4 @@
-#define BASE_FLOW_NUM 1e7
+#define BASE_FLOW_NUM ((int)1e7)
 #define TEST_FLOW_NUM 100
 #define GROUP_ID 1
 

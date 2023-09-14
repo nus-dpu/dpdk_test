@@ -31,6 +31,7 @@
 
 #include "flow_blocks.c"
 #include "packet_make.c"
+
 #include "para.h"
 
 #define NUM_MBUFS 8191
@@ -81,21 +82,21 @@ packet_send_main_loop(void)
 	struct rte_mbuf *bufs_tx[BURST_SIZE];
 
 	/* Reading the packets from all queues. 8< */
-	while (!force_quit) {
-        for(i = 0; i < BURST_SIZE; i++){
-            bufs_tx[i] = make_testpkt(mbuf_pool);
-			if (bufs_tx[i] == NULL)
-			    printf("Error: failed to allocate packet buffer\n");
-        }
-        // Transmit packet
-        nb_tx = rte_eth_tx_burst(port_id, 0, bufs_tx, BURST_SIZE);
-        // total_tx += nb_tx;
-        // length += (bufs_tx[0]->data_len*nb_tx);
-		// loop_count++;
-        if (nb_tx < BURST_SIZE){
-            rte_pktmbuf_free_bulk(bufs_tx + nb_tx, BURST_SIZE - nb_tx);
-        }
-	}
+	// while (!force_quit) {
+    //     for(i = 0; i < BURST_SIZE; i++){
+    //         bufs_tx[i] = make_testpkt(mbuf_pool);
+	// 		if (bufs_tx[i] == NULL)
+	// 		    printf("Error: failed to allocate packet buffer\n");
+    //     }
+    //     // Transmit packet
+    //     nb_tx = rte_eth_tx_burst(port_id, 0, bufs_tx, BURST_SIZE);
+    //     // total_tx += nb_tx;
+    //     // length += (bufs_tx[0]->data_len*nb_tx);
+	// 	// loop_count++;
+    //     if (nb_tx < BURST_SIZE){
+    //         rte_pktmbuf_free_bulk(bufs_tx + nb_tx, BURST_SIZE - nb_tx);
+    //     }
+	// }
 	/* >8 End of reading the packets from all queues. */
 
 	/* closing and releasing resources */
@@ -116,44 +117,84 @@ static void lcore_main(uint32_t lcore_id){
 	struct rte_flow_error error;
 	FILE *fp;
 	double *time_list = NULL;
-	time_list = (double *)malloc(sizeof(double)*FLOW_NUM);
-	if (time_list == NULL){
+	double *rte_time_list = NULL;
+	time_list = (double *)malloc(sizeof(double)*TEST_FLOW_NUM);
+	rte_time_list = (double *)malloc(sizeof(double)*TEST_FLOW_NUM);
+
+	if (time_list == NULL || rte_time_list == NULL){
 		printf("memory for time_list allocate fail\n");
 	}
-	
 	/* Create flow for send packet with. 8< */    
 	int i;
-	for(i = 0 ; i < FLOW_NUM; i++){
-		uint64_t start = rte_rdtsc();
+	for(i = 0 ; i < BASE_FLOW_NUM; i++){
+		double rte_time = 0;
 		flow = generate_ipv4_udp_flow(port_id, 0, SRC_IP, FULL_MASK, 
 		                              DEST_IP_PREFIX + i, FULL_MASK, 
-									  1234, 5678, &error);
-		double add_time=(double)(rte_rdtsc() - start) / rte_get_timer_hz();
-		time_list[i] = add_time;
+									  1234, 5678, &error, &rte_time);
 		if (!flow) {
 			printf("Flow can't be created %d message: %s\n",
 			       error.type,
 			       error.message ? error.message : "(no stated reason)");
 			break;
 		}
-		else{
-			printf("already add %d flows, add time is %lf\n", i+1, add_time);
-		}
 	}
 
-	if (unlikely(access("../lab_results/flow_create_test2/run_time.csv", 0) != 0)){
-        fp = fopen("../lab_results/flow_create_test2/run_time.csv", "a+");
-        fprintf(fp, "index,run_time\r\n");
+    printf("already add %d flows\n", BASE_FLOW_NUM);
+
+	for(i = 0 ; i < TEST_FLOW_NUM; i++){
+		double rte_time = 0;
+		uint64_t start = rte_rdtsc();
+		flow = generate_ipv4_udp_flow(port_id, 0, SRC_IP, FULL_MASK, 
+		                              DEST_IP_PREFIX + i + BASE_FLOW_NUM, FULL_MASK, 
+									  1234, 5678, &error, &rte_time);
+		double add_time=(double)(rte_rdtsc() - start) / rte_get_timer_hz();
+		time_list[i] = add_time;
+		rte_time_list[i] = rte_time;
+		if (!flow) {
+			printf("Flow can't be created %d message: %s\n",
+			       error.type,
+			       error.message ? error.message : "(no stated reason)");
+			break;
+		}
+		// else{
+		// 	printf("already add %d flows, add time is %lf\n", i+1, add_time);
+		// }
+	}
+
+    double time_all = 0;
+	double rte_time_all = 0;
+	if (unlikely(access(RUN_TIME_FILE, 0) != 0)){
+        fp = fopen(RUN_TIME_FILE, "a+");
+        fprintf(fp, "base_flow_num,test_flow_num,index,run_time,rte_create_time\r\n");
     }else{
-        fp = fopen("../lab_results/flow_create_test2/run_time.csv", "a+");
+        fp = fopen(RUN_TIME_FILE, "a+");
     }
 	if( fp == NULL ){
 		printf("failed to open the file\n");
 	}
-	for(i = 0 ; i < FLOW_NUM; i++){
-		fprintf(fp,"%d,%lf\r\n",i+1, time_list[i]);
+	for(i = 0 ; i < TEST_FLOW_NUM; i++){
+		fprintf(fp,"%d,%d,%d,%lf,%lf\r\n", BASE_FLOW_NUM, TEST_FLOW_NUM, i+1, time_list[i], rte_time_list[i]);
+		time_all = time_all + time_list[i];
+		rte_time_all = rte_time_all + rte_time_list[i];
 	}
 	fclose(fp);
+
+	if (unlikely(access(AVG_TIME_FILE, 0) != 0)){
+        fp = fopen(AVG_TIME_FILE, "a+");
+        fprintf(fp, "base_flow_num, test_flow_num, run_time, rte_create_time\r\n");
+    }else{
+        fp = fopen(AVG_TIME_FILE, "a+");
+    }
+	if( fp == NULL ){
+		printf("failed to open the file\n");
+	}
+	
+	fprintf(fp,"%d,%d,%lf,%lf\r\n", BASE_FLOW_NUM, TEST_FLOW_NUM, (time_all/TEST_FLOW_NUM), (rte_time_all/TEST_FLOW_NUM));
+	fclose(fp);
+
+	free(time_list);
+	free(rte_time_list);
+
 	printf("finish file writing\n");
 }
 
@@ -398,13 +439,11 @@ main(int argc, char **argv)
             break;
         } 
     }
-
 	/* Launching main_loop(). 8< */
-	// ret = packet_send_main_loop();
+	ret = packet_send_main_loop();
 	/* >8 End of launching main_loop(). */
 
 	/* clean up the EAL */
 	rte_eal_cleanup();
-
 	return ret;
 }
