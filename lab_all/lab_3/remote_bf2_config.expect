@@ -15,7 +15,7 @@ expect "ubuntu@localhost"
 send " cd /home/ubuntu/software/FastNIC/lab_all/lab_3 \r"
 
 expect "ubuntu@localhost"
-send " ./myovs_rule_install.sh \r"
+send " ./myovs_rule_install_quick.sh \r"
 
 expect "ubuntu@localhost" 
 send "exit\r" 

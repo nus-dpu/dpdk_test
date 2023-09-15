@@ -116,6 +116,7 @@ static void lcore_main(uint32_t lcore_id){
 	struct rte_flow_error error;
 	FILE *fp;
 	double *time_list = NULL;
+	uint64_t installed_flow_num = 0;
 	time_list = (double *)malloc(sizeof(double)*FLOW_NUM);
 	if (time_list == NULL){
 		printf("memory for time_list allocate fail\n");
@@ -136,21 +137,22 @@ static void lcore_main(uint32_t lcore_id){
 			       error.message ? error.message : "(no stated reason)");
 			break;
 		}
+		installed_flow_num++;
 		// else{
 		// 	printf("already add %d flows, add time is %lf\n", i+1, add_time);
 		// }
 	}
 
-	if (unlikely(access("../lab_results/flow_create_test2/run_time.csv", 0) != 0)){
-        fp = fopen("../lab_results/flow_create_test2/run_time.csv", "a+");
+	if (unlikely(access(RUN_TIME_FILE, 0) != 0)){
+        fp = fopen(RUN_TIME_FILE, "a+");
         fprintf(fp, "index,run_time\r\n");
     }else{
-        fp = fopen("../lab_results/flow_create_test2/run_time.csv", "a+");
+        fp = fopen(RUN_TIME_FILE, "a+");
     }
 	if( fp == NULL ){
 		printf("failed to open the file\n");
 	}
-	for(i = 0 ; i < FLOW_NUM; i++){
+	for(i = 0 ; i < installed_flow_num; i++){
 		fprintf(fp,"%d,%lf\r\n",i+1, time_list[i]);
 	}
 	fclose(fp);
