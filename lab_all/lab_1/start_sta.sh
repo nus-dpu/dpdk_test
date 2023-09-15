@@ -57,7 +57,7 @@ cd $run_path/$file_name/
 
 if [[ ! -d "../lab_results/${file_name}" ]]
 then
-    mkdir ../lab_results/${file_name}
+    mkdir -p ../lab_results/${file_name}
 fi
 
 echo "sudo ./build/$file_name -l ${core_id} -a ${src_pci} -- --srcmac ${src_mac} --dstmac ${dst_mac}"

@@ -35,16 +35,17 @@ dstip_num_list=(10000 5000 3333 2500 2000 1666 1429 1250 1111 1000 500 333 )
 
 i=0
 ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-vsctl --no-wait set Open_vSwitch . other_config:hw-offload=true"
-ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-ofctl del-flows ovsdpdk"
-ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-ctl restart --system-id=random"
-# ssh ubuntu@10.15.198.148 "cd ~/software/FastNIC/lab_all/${lab} && ./myovs_rule_install2.sh "
-ssh ubuntu@10.15.198.148 "cd ~/software/FastNIC/lab_all/${lab} && ./myovs_rule_install2_quick.sh "
 
 for ((test=0; test<${#flow_size_list[@]}; test++))
 do
     flow_size=${flow_size_list[$test]}
     srcip_num=${srcip_num_list[$test]}
     dstip_num=${dstip_num_list[$test]}
+
+    ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-ofctl del-flows ovsdpdk"
+    ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-ctl restart --system-id=random"
+    # ssh ubuntu@10.15.198.148 "cd ~/software/FastNIC/lab_all/${lab} && ./myovs_rule_install2.sh "
+    ssh ubuntu@10.15.198.148 "cd ~/software/FastNIC/lab_all/${lab} && ./myovs_rule_install2_quick.sh "
 
     # echo "expect remote_bf2_config.expect $off_thre"
     # expect remote_bf2_config.expect $off_thre
@@ -77,16 +78,17 @@ done
 
 
 ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-vsctl --no-wait set Open_vSwitch . other_config:hw-offload=false"
-ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-ofctl del-flows ovsdpdk"
-ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-ctl restart --system-id=random"
-# ssh ubuntu@10.15.198.148 "cd ~/software/FastNIC/lab_all/${lab} && ./myovs_rule_install2.sh "
-ssh ubuntu@10.15.198.148 "cd ~/software/FastNIC/lab_all/${lab} && ./myovs_rule_install2_quick.sh "
 
 for ((test=0; test<${#flow_size_list[@]}; test++))
 do
     flow_size=${flow_size_list[$test]}
     srcip_num=${srcip_num_list[$test]}
     dstip_num=${dstip_num_list[$test]}
+
+    ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-ofctl del-flows ovsdpdk"
+    ssh ubuntu@10.15.198.148 "sudo ~/bin/ovs-ctl restart --system-id=random"
+    # ssh ubuntu@10.15.198.148 "cd ~/software/FastNIC/lab_all/${lab} && ./myovs_rule_install2.sh "
+    ssh ubuntu@10.15.198.148 "cd ~/software/FastNIC/lab_all/${lab} && ./myovs_rule_install2_quick.sh "
 
     # echo "expect remote_bf2_config.expect $off_thre"
     # expect remote_bf2_config.expect $off_thre
