@@ -30,12 +30,12 @@ function ip2num()
 sudo /home/ubuntu/software/ovs_all/ovs_install/usr/bin/ovs-ofctl del-flows ovsdpdk
 echo "finish del"
 
-SRC_IP_NUM=100000
+SRC_IP_NUM=20000
 SRC_O_CIRCLE_NUM=10
-SRC_I_CIRCLE_NUM=10000
-DST_IP_NUM=100000
+SRC_I_CIRCLE_NUM=2000
+DST_IP_NUM=20000
 DST_O_CIRCLE_NUM=10
-DST_I_CIRCLE_NUM=10000
+DST_I_CIRCLE_NUM=2000
 
 #src
 echo "start src add"
