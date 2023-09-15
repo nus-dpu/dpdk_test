@@ -9,6 +9,9 @@ expect "ubuntu@localhost"
 send "cd /home/ubuntu/software/ovs_all/myovs \r"
 
 expect "ubuntu@localhost"
+send "sudo ~/bin/ovs-ofctl del-flows ovsdpdk \r"
+
+expect "ubuntu@localhost"
 send "sudo ~/bin/ovs-ctl restart --system-id=random \r"
 
 expect "ubuntu@localhost"
