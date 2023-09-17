@@ -301,7 +301,7 @@ static void lcore_main(uint32_t lcore_id)
     printf("Core %u forwarding packets. [Ctrl+C to quit]\n", rte_lcore_id());
     fflush(stdout);
 
-    while (!force_quit && record_count < MAX_RECORD_COUNT) {
+    while (!force_quit && record_count < MAX_RECORD_COUNT && pkt_count < PKTS_NUM) {
     // while (!force_quit && record_count < MAX_RECORD_COUNT && pkt_count < PKTS_NUM) {
         for (i = 0; i < lconf->n_rx_queue; i++){
             #ifdef PCAP_ENABLE
