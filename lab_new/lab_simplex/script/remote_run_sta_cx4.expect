@@ -10,7 +10,7 @@ set ip 10.15.198.149
 spawn ssh $user@$ip
 
 expect "qyn@bf2" 
-send "cd $run_path\r" 
+send "cd $run_path/script\r" 
 
 expect "qyn@bf2" 
 send "./start_sta.sh $file_name $line 149 18-35 $run_path '$run_para'\r"
