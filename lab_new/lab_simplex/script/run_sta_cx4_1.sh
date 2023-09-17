@@ -36,8 +36,8 @@ dstip_num=-1
 off_thre=-1
 zipf_para=-1
 
-test_time_rcv=80
-test_time_send=60
+test_time_rcv=30
+test_time_send=10
 
 flow_num_list=(100000 10000 100)
 cir_time_fn=${#flow_num_list[@]}
