@@ -4,6 +4,7 @@ folder_path="../data"
 
 editcap -c 1000000 ../data/202308011400.pcap ../data/sample.pcap
 
+rm simple_quantile.csv
 # Loop through files starting with "sample"
 for file in "$folder_path"/sample*; do
     for percentage in {0.9,0.8,0.7}; do
@@ -14,7 +15,7 @@ for file in "$folder_path"/sample*; do
 
         make clean
         make
-        ./simple_quantile
+        ./build/simple_quantile
     done
 done
 

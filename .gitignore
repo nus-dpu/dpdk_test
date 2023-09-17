@@ -8,3 +8,4 @@ lab_all/*/*/build
 lab_new/*/*/build
 
 quantile_test/data
+quantile_test/*/*.csv

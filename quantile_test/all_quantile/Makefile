@@ -1,5 +1,5 @@
-APP = simple_quantile
-SRCS-y := simple_quantile.c 
+APP = all_quantile
+SRCS-y := all_quantile.c xxhash.c
 
 CC = gcc
 PKGCONF ?= pkg-config
