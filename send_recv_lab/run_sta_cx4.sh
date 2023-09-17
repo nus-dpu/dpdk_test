@@ -29,8 +29,8 @@ do
     for flow_num in {100,10000,50000,100000}
     # for flow_num in {1000,100000}
     do
-        nohup expect remote_run_sta_cx4.expect $test_time_rcv $run_path $user $password $remotefile $line >> ./lab_results/log/remote.out 2>&1 &
-        echo "nohup expect remote_run_sta_cx4.expect $test_time_rcv $run_path $user $password $remotefile $line >> ./lab_results/log/remote.out 2>&1 &"
+        expect remote_run_sta_cx4.expect $test_time_rcv $run_path $user $password $remotefile $line >> ./lab_results/log/remote.out 2>&1 &
+        echo "expect remote_run_sta_cx4.expect $test_time_rcv $run_path $user $password $remotefile $line >> ./lab_results/log/remote.out 2>&1 &"
         sleep 8s
         echo "./start_sta.sh $file $line 150 $core_id $flow_num 64 $flow_size $test_time_send $run_path"
         ./start_sta.sh $file $line 150 $core_id $flow_num 64 $flow_size $test_time_send $run_path #149,bf2tocx4
