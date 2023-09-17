@@ -5,5 +5,6 @@ flow_rule/lab_results/
 lab_all/*/lab_results/
 */*/build
 lab_all/*/*/build
+lab_new/*/*/build
 
 quantile_test/data
