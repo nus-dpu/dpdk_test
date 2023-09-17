@@ -52,8 +52,8 @@ do
         flow_num=${flow_num_list[$i]}
         zipf_para=${zipf_para_list[$j]}
 
-        echo "expect remote_bf2_config.expect $off_thre"
-        expect remote_bf2_config.expect $off_thre
+        # echo "expect remote_bf2_config.expect $off_thre"
+        # expect remote_bf2_config.expect $off_thre
 
         send_run_para="flow_num $flow_num pkt_len $pkt_len flow_size $flow_size test_time $test_time_send srcip_num $srcip_num dstip_num $dstip_num zipf_para $zipf_para"
         rcv_run_para="flow_num $flow_num pkt_len 64 flow_size $flow_size test_time $test_time_rcv srcip_num $srcip_num dstip_num $dstip_num zipf_para -1"
@@ -66,15 +66,15 @@ do
         ./start_sta.sh $file $line 150 $core_id $run_path "$send_run_para" #149,bf2tocx4
         sleep 30s
 
-        mkdir ./lab_results/${file}/send_$times
-        mv ./lab_results/${file}/*.csv ./lab_results/${file}/send_$times/
-        echo -e "off_thre,zipf_para\r\n${off_thre},${zipf_para}" > ./lab_results/${file}/send_$times/para.csv
+        mkdir ../lab_results/${file}/send_$times
+        mv ../lab_results/${file}/*.csv ../lab_results/${file}/send_$times/
+        echo -e "off_thre,zipf_para\r\n${off_thre},${zipf_para}" > ../lab_results/${file}/send_$times/para.csv
 
-        ssh qyn@10.15.198.149 "cd $run_path && mkdir ./lab_results/${remotefile}/rcv_$times"
+        ssh qyn@10.15.198.149 "cd $run_path && mkdir -p ../lab_results/${remotefile}/rcv_$times"
         ssh qyn@10.15.198.149 "cd $run_path/lab_results/${remotefile}/ && mv *csv rcv_$times/"
         
         ovsfile_path="/home/ubuntu/software/FastNIC/lab_results/ovs_log"
-        mkdir ./lab_results/ovslog/log_$times
+        mkdir ../lab_results/ovslog/log_$times
         scp ubuntu@10.15.198.148:$ovsfile_path/*.csv $run_path/lab_results/ovslog/log_$times
         ssh ubuntu@10.15.198.148 "cd $ovsfile_path && rm -f ./*.csv"
         ((times++))
