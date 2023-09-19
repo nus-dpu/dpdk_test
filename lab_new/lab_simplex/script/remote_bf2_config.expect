@@ -1,7 +1,7 @@
 #!/usr/bin/expect -f2
 set timeout -1
 set ofld_pkts [lindex $argv 0]
-set lab lab_5
+set lab lab_simplex
 
 set user ubuntu
 set ip 10.15.198.148
@@ -26,10 +26,10 @@ expect "ubuntu@localhost"
 send "sudo ~/bin/ovs-ctl start --system-id=random \r"
 
 expect "ubuntu@localhost"
-send " cd /home/ubuntu/software/FastNIC/lab_all/${lab} \r"
+send " cd /home/ubuntu/software/FastNIC/lab_new/${lab}/rules \r"
 
 expect "ubuntu@localhost"
-send " ./myovs_rule_install.sh \r"
+send " ./myovs_rule_install0_quick.sh \r"
  
 expect "ubuntu@localhost" 
 send "exit\r" 
