@@ -51,6 +51,8 @@
 #define THROUGHPUT_FILE "../lab_results/" PROGRAM "/throughput.csv"
 #define THROUGHPUT_TIME_FILE   "../lab_results/" PROGRAM "/throughput_time.csv"
 
+#define MAX_LINE_LENGTH 100
+
 #ifdef PCAP_ENABLE
 #define PCAP_FILE(a) ("../../dataset/synthetic/flow_" STRING_THRANFER(a) ".pcap")
 #endif
@@ -241,11 +243,118 @@ void int_to_string(int input, char* output){
     sprintf(output, "%d", input);
 }
 
+int zipf_csv_read(char *file_name, uint32_t *data){
+    int data_num = 0;
+    FILE *fp = fopen(file_name, "r");
+
+    if(unlikely(fp == NULL)){
+        // rte_exit(EXIT_FAILURE, "Cannot open file %s\n", file_name);
+        printf("Cannot open file %s\n", file_name);
+    }
+
+    char line[MAX_LINE_LENGTH];
+    while (fgets(line, sizeof(line), fp) != NULL) {
+        char *token = strtok(line, ",");
+        while (token != NULL) {
+            char *endptr;
+            data[data_num] = strtol(token, &endptr, 10);
+            data_num ++;
+            token = strtok(NULL, ",");
+        }
+    }
+
+    fclose(fp); 
+
+    for(int i = 0; i < data_num; i++){
+        printf("%d\n",data[i]);
+    }
+    return 0;
+}
+
+// Function to generate Zipf-distributed random numbers
+int generateZipf(double alpha, int n) {
+    double beta = 1.0 - 1.0 / alpha;
+    double rand_num = (double)rand() / RAND_MAX;
+    return (int)(n * pow(1.0 - rand_num, beta));
+}
+
+// Function to count distinct values 
+int countDistinct(int array[], int size) {
+    bool distinctValues[FLOW_NUM] = {false};
+    int count = 0;
+
+    for (int i = 0; i < size; i++) {
+        if (!distinctValues[array[i]]) {
+            distinctValues[array[i]] = true;
+            count++;
+        }
+    }
+    return count;
+}
+
+// Function to compare integers for sorting
+int compareIntegers(const void *a, const void *b) {
+    return (*(int *)a - *(int *)b);
+}
+
+// Function to count distinct values and their occurrences
+int countDistinctValues(uint32_t array[], int size, uint32_t distinctCounts[]) {
+    uint32_t distinctValues[FLOW_NUM] = {0};
+
+    for (int i = 0; i < size; i++) {
+        uint32_t element = array[i];
+        distinctValues[element] ++;
+    }
+
+    int counter = 0;
+    for (int i = 0; i < FLOW_NUM; i++){
+        if (distinctValues[i]){
+            distinctCounts[counter] = distinctValues[i];
+            counter ++;
+        }
+    }
+
+    return counter;
+}
+
+int zipflist_gen(uint32_t *array, int item_size, int item_num, double zipf_alpha) {
+    // srand(time(NULL)); // Initialize random seed
+    int element_num = 0;
+
+    // Generate the Zipf-distributed array
+    for (int i = 0; i < item_size; i++) {
+        int element;
+        element = generateZipf(zipf_alpha, item_num);
+        array[i] = element;
+        element_num ++;
+    }
+    printf("successfully generate %d elements\n", element_num);
+
+    // Calculate the number of distinct values
+    int distinctCount = countDistinct(array, item_size);
+    printf("Number of distinct values: %d\n", distinctCount);
+
+    // the counts for each distinct element
+    uint32_t *distinctCounts = (uint32_t *) malloc(item_num * sizeof(uint32_t));
+    memset(distinctCounts, 0, item_num * sizeof(uint32_t));
+    int distinctflow = countDistinctValues(array, item_size, distinctCounts);
+    printf("Number of distinct flows: %d\n", distinctflow);
+
+    qsort(distinctCounts, item_num, sizeof(uint32_t), compareIntegers);
+    printf("25th percentile value: %d\n", distinctCounts[(int)(0.25 * item_num)]);
+    printf("50th percentile value: %d\n", distinctCounts[(int)(0.50 * item_num)]);
+    printf("75th percentile value: %d\n", distinctCounts[(int)(0.75 * item_num)]);
+    printf("80th percentile value: %d\n", distinctCounts[(int)(0.80 * item_num)]);
+    printf("90th percentile value: %d\n", distinctCounts[(int)(0.90 * item_num)]);
+
+    return 0;
+}
+
 /*
  * The lcore main. This is the main thread that does the work, reading from
  * an input port and writing to an output port.
  */
-static void lcore_main(uint32_t lcore_id)
+static void lcore_main(uint32_t lcore_id, uint32_t * zipf_pkts)
 {
     // Check that the port is on the same NUMA node.
     if (rte_eth_dev_socket_id(enabled_port) > 0 &&
@@ -259,8 +368,7 @@ static void lcore_main(uint32_t lcore_id)
     
     int pkt_batch_count = 0;
     
-    uint64_t large_pkt_count = 0;
-    uint64_t small_pkt_count = 0;
+    uint64_t pkt_count = 0;
     uint64_t loop_count = 0;
     uint64_t record_count = 0;
     /* pkts_sta */
@@ -302,6 +410,9 @@ static void lcore_main(uint32_t lcore_id)
     printf("Core %u forwarding packets. [Ctrl+C to quit]\n", rte_lcore_id());
     fflush(stdout);
 
+    // uint32_t *zipf_data = (uint32_t *) malloc( PKTS_NUM * sizeof(uint32_t));
+    // zipf_csv_read(ZIPF_FILE, zipf_data);
+
     while (!force_quit && record_count < MAX_RECORD_COUNT) {
     // while (!force_quit && record_count < MAX_RECORD_COUNT && pkt_count < PKTS_NUM) {
         for (i = 0; i < lconf->n_rx_queue; i++){
@@ -313,15 +424,8 @@ static void lcore_main(uint32_t lcore_id)
             for (j = 0; j < BURST_SIZE; j++){
                 struct flow flow_id;
                 uint32_t ip_suffix;
-                if (unlikely(large_pkt_count % PKT_RATIO) == 0 ){
-                    ip_suffix = small_pkt_count % (FLOW_NUM/2);
-                    small_pkt_count++;
-                } else{
-                    ip_suffix = large_pkt_count % (FLOW_NUM/2) + (FLOW_NUM/2);
-                    large_pkt_count++;
-                }
-                // ip_suffix = (large_pkt_count % FLOW_NUM);
-                large_pkt_count++;
+                ip_suffix = zipf_pkts[pkt_count % PKTS_NUM];
+                pkt_count++;
                 flow_id.src_ip = (uint32_t)(SRC_IP_PREFIX + ip_suffix) ;
                 flow_id.dst_ip = DEST_IP_PREFIX;
                 flow_id.src_port = 1234;
@@ -391,7 +495,8 @@ static void lcore_main(uint32_t lcore_id)
 static int
 launch_one_lcore(__attribute__((unused)) void *arg){
     uint32_t lcore_id = rte_lcore_id();
-	lcore_main(lcore_id);
+    uint32_t *zipf_pkts = (uint32_t *) arg;
+	lcore_main(lcore_id, zipf_pkts);
 	return 0;
 }
 
@@ -669,8 +774,13 @@ int main(int argc, char *argv[])
     if (pcap_init() != 0)
         rte_exit(EXIT_FAILURE, "Cannot correctly open pcap file\n");
     #endif
+
+    uint32_t *zipf_pkts = (uint32_t *) malloc(PKTS_NUM * sizeof(uint32_t));
+    memset(zipf_pkts, 0, PKTS_NUM * sizeof(uint32_t));
+    zipflist_gen(zipf_pkts, PKTS_NUM, FLOW_NUM, ZIPF_PARA);
+
     gettimeofday(&timetag, NULL);
-    rte_eal_mp_remote_launch((lcore_function_t *)launch_one_lcore, NULL, CALL_MAIN);
+    rte_eal_mp_remote_launch((lcore_function_t *)launch_one_lcore, zipf_pkts, CALL_MAIN);
     RTE_LCORE_FOREACH_WORKER(lcore_id){
         if (rte_eal_wait_lcore(lcore_id) < 0) {
             ret = -1;

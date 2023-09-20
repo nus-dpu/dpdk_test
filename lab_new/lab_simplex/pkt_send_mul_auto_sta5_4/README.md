@@ -39,3 +39,8 @@ pkt_send_mul_auto_sta5_3
   based on pkt_send_mul_auto_sta5_2
   change function:
     1.generate x flows with different "x" src_ip, half is small and half is large
+
+pkt_send_mul_auto_sta5_4
+  based on pkt_send_mul_auto_sta5_2
+  change function:
+    1.generate x flows with a specific zipf distribution
