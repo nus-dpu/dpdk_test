@@ -1,8 +1,9 @@
 # 均匀分布，不同发包侧core，不同flow number，不同pkt size，
 # 用pure ovs with offload
-sendfile=pkt_send_mul_auto_sta5_2
+sendfile=pkt_send_mul_auto_sta5_3
 recvfile=pkt_rcv_mul_auto_sta3
 lab=lab_simplex
+remote_server=qyn@nsl-node12.d2.comp.nus.edu.sg
 
 # line="bf2"
 # line="cx5"
@@ -33,11 +34,11 @@ zipf_para=-1
 
 off_thre=-1
 
-test_time_rcv=30
+test_time_rcv=40
 test_time_send=10
 
 # flow_num_list=(100000 10000 100)
-flow_num_list=(100000)
+flow_num_list=(10 100000)
 cir_time_fn=${#flow_num_list[@]}
 
 times=0
@@ -55,13 +56,13 @@ do
     ./start_sta.sh $recvfile $line "node11" "16-31" $run_path "$rcv_run_para" >> ../lab_results/log/recv.out 2>&1 &
     sleep 8s
 
-
     echo ssh 'qyn@nsl-node12.d2.comp.nus.edu.sg' "cd ${run_path}/script && ./start_sta.sh $sendfile $line node12 $core_id $run_path \"$send_run_para\" "
     ssh 'qyn@nsl-node12.d2.comp.nus.edu.sg' "cd ${run_path}/script && ./start_sta.sh $sendfile $line node12 $core_id $run_path \"$send_run_para\" "
     sleep 30s
 
     mkdir -p ${run_path}/lab_results/${sendfile}/send_$times
-    mv ${run_path}/lab_results/${sendfile}/*.csv ${run_path}/lab_results/${sendfile}/send_$times/
+    scp $remote_server:${run_path}/lab_results/${sendfile}/*.csv ${run_path}/lab_results/${sendfile}/send_$times/
+    ssh $remote_server "rm -f ${run_path}/lab_results/${sendfile}/*.csv"
     echo -e "off_thre,zipf_para\r\n${off_thre},${zipf_para}" > ${run_path}/lab_results/${sendfile}/send_$times/para.csv
 
     mkdir -p ${run_path}/lab_results/${recvfile}/rcv_$times
@@ -69,8 +70,8 @@ do
     
     ovsfile_path="/home/ubuntu/software/FastNIC/lab_results/ovs_log"
     mkdir ${run_path}/lab_results/ovslog/log_$times
-    scp ubuntu@192.168.100.2:$ovsfile_path/*.csv ${run_path}/lab_results/ovslog/log_$times
-    ssh ubuntu@192.168.100.2 "cd $ovsfile_path && rm -f ./*.csv"
+    scp ubuntu@192.168.100.2:${ovsfile_path}/*.csv ${run_path}/lab_results/ovslog/log_$times
+    ssh ubuntu@192.168.100.2 "rm -f ${ovsfile_path}/*.csv"
     ((times++))
 done
 
