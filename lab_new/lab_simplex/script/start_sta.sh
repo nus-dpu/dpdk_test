@@ -128,7 +128,8 @@ then
     make clean
     make
     sudo ./build/$file_name -l ${core_id} -a ${src_pci}
-elif [[ ${file_name} == "pkt_send_mul_auto_sta4_2" ]]
+elif [[ ${file_name} == "pkt_send_mul_auto_sta4_2" || \
+        ${file_name} == "pkt_send_mul_auto_sta5_4" ]]
 then
     sed -i "s/#define FLOW_NUM.*$/#define FLOW_NUM ${flow_num}/" para.h
     sed -i "s/#define MAX_RECORD_COUNT.*$/#define MAX_RECORD_COUNT ${test_time}/" para.h
