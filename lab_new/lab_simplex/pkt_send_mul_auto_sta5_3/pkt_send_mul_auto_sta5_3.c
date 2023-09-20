@@ -320,7 +320,8 @@ static void lcore_main(uint32_t lcore_id)
                 //     ip_suffix = large_pkt_count % (FLOW_NUM/2) + (FLOW_NUM/2);
                 //     large_pkt_count++;
                 // }
-                ip_suffix = (pkt_count % FLOW_NUM);
+                ip_suffix = (large_pkt_count % FLOW_NUM);
+                large_pkt_count++;
                 flow_id.src_ip = (uint32_t)(SRC_IP_PREFIX + ip_suffix) ;
                 flow_id.dst_ip = DEST_IP_PREFIX;
                 flow_id.src_port = 1234;
