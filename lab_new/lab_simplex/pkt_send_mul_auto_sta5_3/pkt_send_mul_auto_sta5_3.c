@@ -313,14 +313,14 @@ static void lcore_main(uint32_t lcore_id)
             for (j = 0; j < BURST_SIZE; j++){
                 struct flow flow_id;
                 uint32_t ip_suffix;
-                if (unlikely(large_pkt_count % PKT_RATIO) == 0 ){
-                    ip_suffix = small_pkt_count % (FLOW_NUM/2);
-                    small_pkt_count++;
-                } else{
-                    ip_suffix = large_pkt_count % (FLOW_NUM/2) + (FLOW_NUM/2);
-                    large_pkt_count++;
-                }
-                // ip_suffix = (pkt_count % FLOW_NUM)
+                // if (unlikely(large_pkt_count % PKT_RATIO) == 0 ){
+                //     ip_suffix = small_pkt_count % (FLOW_NUM/2);
+                //     small_pkt_count++;
+                // } else{
+                //     ip_suffix = large_pkt_count % (FLOW_NUM/2) + (FLOW_NUM/2);
+                //     large_pkt_count++;
+                // }
+                ip_suffix = (pkt_count % FLOW_NUM)
                 flow_id.src_ip = (uint32_t)(SRC_IP_PREFIX + ip_suffix) ;
                 flow_id.dst_ip = DEST_IP_PREFIX;
                 flow_id.src_port = 1234;
