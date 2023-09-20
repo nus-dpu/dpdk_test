@@ -3,8 +3,7 @@
 // #define FLOW_NUM 100000
 
 #define FLOW_NUM 100000
-#define FLOW_SIZE 1000
-#define PKTS_NUM (FLOW_SIZE*FLOW_NUM)
+#define PKTS_NUM (PKT_RATIO*FLOW_NUM / 2)
 
 #define PKT_LEN 64
 #define MAX_RECORD_COUNT 10

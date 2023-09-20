@@ -259,6 +259,7 @@ static void lcore_main(uint32_t lcore_id)
     
     int pkt_batch_count = 0;
     
+    uint64_t pkt_count = 0;
     uint64_t large_pkt_count = 0;
     uint64_t small_pkt_count = 0;
     uint64_t loop_count = 0;
@@ -302,8 +303,8 @@ static void lcore_main(uint32_t lcore_id)
     printf("Core %u forwarding packets. [Ctrl+C to quit]\n", rte_lcore_id());
     fflush(stdout);
 
-    while (!force_quit && record_count < MAX_RECORD_COUNT) {
-    // while (!force_quit && record_count < MAX_RECORD_COUNT && pkt_count < PKTS_NUM) {
+    // while (!force_quit && record_count < MAX_RECORD_COUNT) {
+    while (!force_quit && record_count < MAX_RECORD_COUNT && pkt_count < PKTS_NUM) {
         for (i = 0; i < lconf->n_rx_queue; i++){
             #ifdef PCAP_ENABLE
             rte_pktmbuf_alloc_bulk(pktmbuf_pool[queue_id], 
@@ -320,8 +321,9 @@ static void lcore_main(uint32_t lcore_id)
                     ip_suffix = large_pkt_count % (FLOW_NUM/2) + (FLOW_NUM/2);
                     large_pkt_count++;
                 }
+                pkt_count ++;
                 // ip_suffix = (large_pkt_count % FLOW_NUM);
-                large_pkt_count++;
+                // large_pkt_count++;
                 flow_id.src_ip = (uint32_t)(SRC_IP_PREFIX + ip_suffix) ;
                 flow_id.dst_ip = DEST_IP_PREFIX;
                 flow_id.src_port = 1234;
