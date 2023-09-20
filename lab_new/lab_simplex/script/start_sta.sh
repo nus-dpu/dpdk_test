@@ -35,7 +35,19 @@ then
     src_nic_name="ens3np0"
     dst_ip="192.168.201.1"
     dst_mac="08:c0:eb:de:41:f2"
+elif [[ $line == "nusbf2" && $host_name == "node11" ]] 
+then
+    src_nic_name="ens1f0np0"
+    dst_ip="192.168.200.2"
+    dst_mac="10:70:fd:c8:94:74"
+elif [[ $line == "nusbf2" && $host_name == "node12" ]] 
+then
+    src_nic_name="enp177s0f0"
+    dst_ip="192.168.200.1"
+    dst_mac="b8:ce:f6:a8:82:a6"
 fi
+
+
 src_mac=`ifconfig ${src_nic_name}|grep ether|awk '{print $2}'`
 src_pci=`ethtool -i ${src_nic_name}|grep bus-info|awk '{print $2}'`
 # dst_mac=`arp ${dst_ip}|grep ether|awk '{print $3}'`
@@ -47,10 +59,10 @@ echo -e '\n'
 
 if [[ ${host_name} == "149" ]]
 then
-    export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig/ #149
-elif [[ ${host_name} == "150" ]]
+    export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig/
+elif [[ ${host_name} == "150" || ${host_name} == "node11" || ${host_name} == "node12" ]]
 then
-    export PKG_CONFIG_PATH=/usr/local/lib/x86_64-linux-gnu/pkgconfig/ #150
+    export PKG_CONFIG_PATH=/usr/local/lib/x86_64-linux-gnu/pkgconfig/
 fi
 
 cd $run_path/$file_name/
