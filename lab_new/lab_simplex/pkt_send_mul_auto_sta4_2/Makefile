@@ -15,12 +15,15 @@ $(error "no installation of DPDK found")
 endif
 
 ifeq ($(shell hostname), nsl-node11)
-D_IS_NSL := -DTPUT_PFX=\"/local/qyn\"
+# D_IS_NSL := -DTPUT_PFX=\"/local/qyn\"
+D_IS_NSL := -DTPUT_PFX=\"..\"
 else ifeq ($(shell hostname), nsl-node12)
-D_IS_NSL := -DTPUT_PFX=\"/local/qyn\"
+# D_IS_NSL := -DTPUT_PFX=\"/local/qyn\"
+D_IS_NSL := -DTPUT_PFX=\"..\"
 else
 D_IS_NSL := -DTPUT_PFX=\"..\"
 endif
+
 
 all: shared
 .PHONY: shared static
