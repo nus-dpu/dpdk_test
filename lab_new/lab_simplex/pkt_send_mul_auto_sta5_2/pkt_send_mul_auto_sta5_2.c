@@ -330,9 +330,9 @@ static void lcore_main(uint32_t lcore_id)
                 txB[j] = bufs_tx[j]->data_len;
 
                 pkt_count++;
-                if(unlikely(pkt_count == FLOW_NUM)){
-                    pkt_count = 0;
-                }
+                // if(unlikely(pkt_count == FLOW_NUM)){
+                //     pkt_count = 0;
+                // }
             }
 
             // Send the packet batch
