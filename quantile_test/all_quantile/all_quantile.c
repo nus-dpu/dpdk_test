@@ -350,7 +350,7 @@ int main(__attribute__((unused)) int argc, __attribute__((unused)) char *argv[])
     
     int i,j,k;
     double QUANTILE_PER[] = {0.6,0.65,0.7,0.75,0.8,0.85,0.9,0.95};
-    int quan_len = 5;
+    int quan_len = 8;
 
     for (i = 0; i < quan_len; i++){
         struct flow_count *sq_flows = (struct flow_count *) malloc(tcpudp_flow_num * sizeof(struct flow_count));
