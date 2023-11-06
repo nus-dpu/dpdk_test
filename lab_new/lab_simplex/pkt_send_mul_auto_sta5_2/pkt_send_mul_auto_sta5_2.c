@@ -48,8 +48,8 @@
 #define SRC_IP_PREFIX ((192<<24)) /* dest ip prefix = 192.0.0.0.0 */
 #define DEST_IP_PREFIX ((193<<24)) /* dest ip prefix = 192.0.0.0.0 */
 
-#define THROUGHPUT_FILE "../lab_results/" PROGRAM "/throughput.csv"
-#define THROUGHPUT_TIME_FILE   "../lab_results/" PROGRAM "/throughput_time.csv"
+#define THROUGHPUT_FILE TPUT_PFX "/lab_results/" PROGRAM "/throughput.csv"
+#define THROUGHPUT_TIME_FILE TPUT_PFX "/lab_results/" PROGRAM "/throughput_time.csv"
 
 #ifdef PCAP_ENABLE
 #define PCAP_FILE(a) ("../../dataset/synthetic/flow_" STRING_THRANFER(a) ".pcap")
@@ -330,9 +330,9 @@ static void lcore_main(uint32_t lcore_id)
                 txB[j] = bufs_tx[j]->data_len;
 
                 pkt_count++;
-                if(unlikely(pkt_count == FLOW_NUM)){
-                    pkt_count = 0;
-                }
+                // if(unlikely(pkt_count == FLOW_NUM)){
+                //     pkt_count = 0;
+                // }
             }
 
             // Send the packet batch
