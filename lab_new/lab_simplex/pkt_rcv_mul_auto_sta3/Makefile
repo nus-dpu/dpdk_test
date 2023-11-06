@@ -14,6 +14,16 @@ ifneq ($(shell $(PKGCONF) --exists libdpdk && echo 0),0)
 $(error "no installation of DPDK found")
 endif
 
+ifeq ($(shell hostname), nsl-node11)
+# D_IS_NSL := -DTPUT_PFX=\"/local/qyn\"
+D_IS_NSL := -DTPUT_PFX=\"..\"
+else ifeq ($(shell hostname), nsl-node12)
+# D_IS_NSL := -DTPUT_PFX=\"/local/qyn\"
+D_IS_NSL := -DTPUT_PFX=\"..\"
+else
+D_IS_NSL := -DTPUT_PFX=\"..\"
+endif
+
 all: shared
 .PHONY: shared static
 shared: build/$(APP)-shared
@@ -34,7 +44,7 @@ $(error "Cannot generate statically-linked binaries with this version of pkg-con
 endif
 endif
 
-CFLAGS += -DALLOW_EXPERIMENTAL_API
+CFLAGS += -DALLOW_EXPERIMENTAL_API $(D_IS_NSL)
 
 build/$(APP)-shared: $(SRCS-y) Makefile $(PC_FILE) | build
 	$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_SHARED) 

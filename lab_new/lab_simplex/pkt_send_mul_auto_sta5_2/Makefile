@@ -7,12 +7,24 @@ APP = pkt_send_mul_auto_sta5_2
 # all source are stored in SRCS-y
 SRCS-y := pkt_send_mul_auto_sta5_2.c
 
+
 PKGCONF ?= pkg-config
 
 # Build using pkg-config variables if possible
 ifneq ($(shell $(PKGCONF) --exists libdpdk && echo 0),0)
 $(error "no installation of DPDK found")
 endif
+
+ifeq ($(shell hostname), nsl-node11)
+# D_IS_NSL := -DTPUT_PFX=\"/local/qyn\"
+D_IS_NSL := -DTPUT_PFX=\"..\"
+else ifeq ($(shell hostname), nsl-node12)
+# D_IS_NSL := -DTPUT_PFX=\"/local/qyn\"
+D_IS_NSL := -DTPUT_PFX=\"..\"
+else
+D_IS_NSL := -DTPUT_PFX=\"..\"
+endif
+
 
 all: shared
 .PHONY: shared static
@@ -23,7 +35,7 @@ static: build/$(APP)-static
 
 PC_FILE := $(shell $(PKGCONF) --path libdpdk 2>/dev/null)
 CFLAGS += -O3 $(shell $(PKGCONF) --cflags libdpdk)
-LDFLAGS_SHARED = $(shell $(PKGCONF) --libs libdpdk) -lm -ldl -lpcap
+LDFLAGS_SHARED = $(shell $(PKGCONF) --libs libdpdk)
 LDFLAGS_STATIC = $(shell $(PKGCONF) --static --libs libdpdk)
 
 ifeq ($(MAKECMDGOALS),static)
@@ -34,7 +46,7 @@ $(error "Cannot generate statically-linked binaries with this version of pkg-con
 endif
 endif
 
-CFLAGS += -DALLOW_EXPERIMENTAL_API
+CFLAGS += -DALLOW_EXPERIMENTAL_API $(D_IS_NSL)
 
 build/$(APP)-shared: $(SRCS-y) Makefile $(PC_FILE) | build
 	$(CC) $(CFLAGS) $(SRCS-y) -o $@ $(LDFLAGS) $(LDFLAGS_SHARED) 

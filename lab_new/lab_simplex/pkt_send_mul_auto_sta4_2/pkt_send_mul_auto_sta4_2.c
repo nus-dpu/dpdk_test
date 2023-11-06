@@ -45,8 +45,8 @@
 #define STRING_THRANFER(a) TO_STRING(a)
 #define PCAP_FILE(a, b) ("../../dataset/synthetic/flow_" STRING_THRANFER(a) "_zipf_" STRING_THRANFER(b) ".pcap")
 
-#define THROUGHPUT_FILE "../lab_results/" PROGRAM "/throughput.csv"
-#define THROUGHPUT_TIME_FILE   "../lab_results/" PROGRAM "/throughput_time.csv"
+#define THROUGHPUT_FILE TPUT_PFX "/lab_results/" PROGRAM "/throughput.csv"
+#define THROUGHPUT_TIME_FILE TPUT_PFX "/lab_results/" PROGRAM "/throughput_time.csv"
 
 struct lcore_configuration {
     uint32_t vid; // virtual core id
