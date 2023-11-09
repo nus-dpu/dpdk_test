@@ -29,20 +29,21 @@ test_time_send=60
 
 # flow_num_list=(10 100 1000 2000 3000 4000 5000 6000 7000 8000 9000 10000)
 flow_num_list=(10 100 1000 2000 3000 4000 5000 6000 7000 8000 9000 10000 11000 12000 13000 14000 15000 16000 17000 18000 19000 20000 30000 40000 50000 60000 70000 80000 90000)
+
 # flow_num_list=(10 20)
 cir_time=${#flow_num_list[@]}
 
 for ((i=0; i<$cir_time; i++))
 do
     flow_num=${flow_num_list[$i]}
-    echo "expect remote_bf2_config.expect"
-    expect remote_bf2_config.expect
+    # echo "expect remote_bf2_config.expect"
+    # expect remote_bf2_config.expect
 
     send_run_para="flow_num $flow_num pkt_len $pkt_len flow_size $flow_size test_time $test_time_send srcip_num $srcip_num dstip_num $dstip_num"
     rcv_run_para="flow_num $flow_num pkt_len 64 flow_size $flow_size test_time $test_time_rcv srcip_num $srcip_num dstip_num $dstip_num"
 
-    echo "nohup expect remote_run_sta_cx4.expect $run_path $user $password $remotefile $line \"$rcv_run_para\" >> ./lab_results/log/remote.out 2>&1 &"
-    nohup expect remote_run_sta_cx4.expect $run_path $user $password $remotefile $line "$rcv_run_para" >> ./lab_results/log/remote.out 2>&1 &
+    echo "expect remote_run_sta_cx4.expect $run_path $user $password $remotefile $line \"$rcv_run_para\" >> ./lab_results/log/remote.out 2>&1 &"
+    expect remote_run_sta_cx4.expect $run_path $user $password $remotefile $line "$rcv_run_para" >> ./lab_results/log/remote.out 2>&1 &
     sleep 8s
 
     echo ./start_sta.sh $file $line 161 $core_id $run_path \"$send_run_para\"

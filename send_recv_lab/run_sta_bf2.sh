@@ -25,7 +25,7 @@ do
     # for flow_num in {100,1000,10000,30000,50000,70000,90000,100000}
     for flow_num in {1000,100000}
     do
-        nohup expect remote_run_sta_bf2.expect $test_time_rcv $run_path $user $password $remotefile $rcv_nic>> ./lab_results/log/remote.out 2>&1 &
+        expect remote_run_sta_bf2.expect $test_time_rcv $run_path $user $password $remotefile $rcv_nic>> ./lab_results/log/remote.out 2>&1 &
         sleep 8s
         ./start_sta.sh $file $src_nic "192.168.200.2" $core_id $flow_num 64 $test_time_send $run_path 149 #149,bf2tocx4
         # ./start_sta.sh pkt_send_mul_auto_sta2/ enp216s0f0 "192.168.200.2" 18-20 100 64 20 /home/qyn/software/FastNIC 149

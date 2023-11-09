@@ -39,7 +39,7 @@ do
   do
     ip=$(($ip_prefix+$j+$i*$I_CIRCLE_NUM))
     ip_dot=`num2ip $ip`
-    if [[ $(($j % 100)) == 0 ]];
+    if [[ $(($j % 1000)) == 0 ]];
     then
       echo $ip_dot
     fi

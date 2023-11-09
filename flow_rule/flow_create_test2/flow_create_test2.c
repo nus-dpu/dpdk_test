@@ -31,6 +31,7 @@
 
 #include "flow_blocks.c"
 #include "packet_make.c"
+#include "para.h"
 
 #define NUM_MBUFS 8191
 #define MBUF_CACHE_SIZE 250
@@ -47,7 +48,6 @@
 #define FULL_MASK 0xffffffff /* full mask */
 #define EMPTY_MASK 0x0 /* empty mask */
 
-#define FLOW_NUM 100000
 #define BURST_SIZE 32
 
 struct lcore_configuration {
@@ -125,10 +125,9 @@ static void lcore_main(uint32_t lcore_id){
 	int i;
 	for(i = 0 ; i < FLOW_NUM; i++){
 		uint64_t start = rte_rdtsc();
-		flow = generate_ipv4_udp_flow(port_id, SRC_IP, FULL_MASK, 
-		                                       DEST_IP_PREFIX + i, FULL_MASK, 
-											   1234, 5678,
-											   &error);
+		flow = generate_ipv4_udp_flow(port_id, 0, SRC_IP, FULL_MASK, 
+		                              DEST_IP_PREFIX + i, FULL_MASK, 
+									  1234, 5678, &error);
 		double add_time=(double)(rte_rdtsc() - start) / rte_get_timer_hz();
 		time_list[i] = add_time;
 		if (!flow) {
@@ -137,9 +136,9 @@ static void lcore_main(uint32_t lcore_id){
 			       error.message ? error.message : "(no stated reason)");
 			break;
 		}
-		else{
-			printf("already add %d flows, add time is %lf\n", i+1, add_time);
-		}
+		// else{
+		// 	printf("already add %d flows, add time is %lf\n", i+1, add_time);
+		// }
 	}
 
 	if (unlikely(access("../lab_results/flow_create_test2/run_time.csv", 0) != 0)){

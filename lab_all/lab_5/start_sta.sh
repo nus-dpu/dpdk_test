@@ -15,26 +15,26 @@ for ((i=0; i<${#arr[@]}; i+=2)); do
 done
 
 # determine nic, ip, mac
-if [[ $line == "bf2" && $host_name == 160 ]] #bf2-cx5
+if [[ $line == "bf2" && $host_name == 149 ]] #bf2-cx4
 then 
-    src_nic_name="ens5f1np1"
+    src_nic_name="enp216s0f0"
     dst_ip="192.168.200.2"
-    dst_mac="08:c0:eb:de:43:36"
-elif [[ $line == "bf2" && $host_name == 161 ]] #cx5-bf2
+    dst_mac="b8:83:03:82:a2:10"
+elif [[ $line == "bf2" && $host_name == 150 ]] #cx4-bf2
 then 
-    src_nic_name="ens22np0"
+    src_nic_name="ens1np0"
     dst_ip="192.168.200.1"
-    dst_mac="0c:42:a1:d8:10:85"
-# elif [[ $line == "cx5" && $host_name == 149 ]] #cx5(withbf2)-cx5(withcx4)
-# then 
-#     src_nic_name="enp175s0"
-#     dst_ip="192.168.201.2"
-#     dst_mac="08:c0:eb:de:43:2e"
-# elif [[ $line == "cx5" && $host_name == 150 ]] #cx5(withbf4)-cx5(withcx5)
-# then 
-#     src_nic_name="ens3np0"
-#     dst_ip="192.168.201.1"
-#     dst_mac="08:c0:eb:de:41:f2"
+    dst_mac="0c:42:a1:d8:10:84"
+elif [[ $line == "cx5" && $host_name == 149 ]] #cx5(withbf2)-cx5(withcx4)
+then 
+    src_nic_name="enp175s0"
+    dst_ip="192.168.201.2"
+    dst_mac="08:c0:eb:de:43:2e"
+elif [[ $line == "cx5" && $host_name == 150 ]] #cx5(withbf4)-cx5(withcx5)
+then 
+    src_nic_name="ens3np0"
+    dst_ip="192.168.201.1"
+    dst_mac="08:c0:eb:de:41:f2"
 fi
 src_mac=`ifconfig ${src_nic_name}|grep ether|awk '{print $2}'`
 src_pci=`ethtool -i ${src_nic_name}|grep bus-info|awk '{print $2}'`
@@ -45,14 +45,13 @@ echo src_mac:${src_mac},src_pci:${src_pci}
 echo dst_mac:${dst_mac}
 echo -e '\n'
 
-# if [[ ${host_name} == "149" ]]
-# then
-#     export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig/ #149
-# elif [[ ${host_name} == "150" ]]
-# then
-#     export PKG_CONFIG_PATH=/usr/local/lib/x86_64-linux-gnu/pkgconfig/ #150
-# fi
-export PKG_CONFIG_PATH=/usr/local/lib/x86_64-linux-gnu/pkgconfig/
+if [[ ${host_name} == "149" ]]
+then
+    export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig/ #149
+elif [[ ${host_name} == "150" ]]
+then
+    export PKG_CONFIG_PATH=/usr/local/lib/x86_64-linux-gnu/pkgconfig/ #150
+fi
 
 cd $run_path/$file_name/
 
@@ -107,4 +106,12 @@ then
     make clean
     make
     sudo ./build/$file_name -l ${core_id} -a ${src_pci}
+elif [[ ${file_name} == "pkt_send_mul_auto_sta4_2" ]]
+then
+    sed -i "s/#define FLOW_NUM.*$/#define FLOW_NUM ${flow_num}/" para.h
+    sed -i "s/#define MAX_RECORD_COUNT.*$/#define MAX_RECORD_COUNT ${test_time}/" para.h
+    sed -i "s/#define ZIPF_PARA.*$/#define ZIPF_PARA ${zipf_para}/" para.h
+    make clean
+    make
+    sudo ./build/$file_name -l ${core_id} -a ${src_pci} -- --srcmac ${src_mac} --dstmac ${dst_mac} 
 fi

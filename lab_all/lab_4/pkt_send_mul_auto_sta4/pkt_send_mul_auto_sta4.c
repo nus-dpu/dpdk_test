@@ -223,7 +223,7 @@ static void lcore_main(uint32_t lcore_id)
             }
 
             // Send the packet batch
-            uint16_t nb_tx = rte_eth_tx_burst(lconf->port, lconf->rx_queue_list[i], bufs_tx, BURST_SIZE);
+            uint16_t nb_tx = rte_eth_tx_burst(lconf->port, lconf->tx_queue_list[i], bufs_tx, BURST_SIZE);
             total_tx += nb_tx;
             for (j = 0; j < nb_tx; j++){
                 total_txB += txB[j];

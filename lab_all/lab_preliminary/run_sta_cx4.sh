@@ -33,8 +33,8 @@ do
     do
         echo "expect remote_bf2_config.expect $off_thre"
         expect remote_bf2_config.expect $off_thre
-        nohup expect remote_run_sta_cx4.expect $test_time_rcv $run_path $user $password $remotefile $line >> ./lab_results/log/remote.out 2>&1 &
-        echo "nohup expect remote_run_sta_cx4.expect $test_time_rcv $run_path $user $password $remotefile $line >> ./lab_results/log/remote.out 2>&1 &"
+        expect remote_run_sta_cx4.expect $test_time_rcv $run_path $user $password $remotefile $line >> ./lab_results/log/remote.out 2>&1 &
+        echo "expect remote_run_sta_cx4.expect $test_time_rcv $run_path $user $password $remotefile $line >> ./lab_results/log/remote.out 2>&1 &"
         sleep 8s
         echo "./start_sta.sh $file $line 161 $core_id $flow_num 64 $flow_size $test_time_send $run_path"
         ./start_sta.sh $file $line 161 $core_id $flow_num 64 $flow_size $test_time_send $run_path #149,bf2tocx4

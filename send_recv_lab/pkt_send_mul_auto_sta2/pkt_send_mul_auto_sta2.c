@@ -269,7 +269,7 @@ static void lcore_main(uint32_t lcore_id)
                 }
             }
             // Transmit packet
-            uint16_t nb_tx = rte_eth_tx_burst(lconf->port, lconf->rx_queue_list[i], bufs_tx, BURST_SIZE);
+            uint16_t nb_tx = rte_eth_tx_burst(lconf->port, lconf->tx_queue_list[i], bufs_tx, BURST_SIZE);
             total_tx += nb_tx;
             length += (bufs_tx[0]->data_len*nb_tx);
             if (nb_tx < BURST_SIZE){

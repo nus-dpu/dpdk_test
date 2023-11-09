@@ -1,5 +1,5 @@
 # parameter
-file=pkt_send_mul_auto_sta4
+file=pkt_send_mul_auto_sta4_2
 remotefile=pkt_rcv_mul_auto_sta3
 lab=lab_5
 
@@ -11,8 +11,8 @@ rm ./lab_results/log/remote.out
 rm ./lab_results/log/cx4.out
 # rm ./lab_results/log/remote_bfconfig.out
 rm -rf ./lab_results/$file/*
-ssh qyn@10.15.198.160 "cd $run_path && rm -rf ./lab_results/$remotefile/*"
+ssh qyn@10.15.198.149 "cd $run_path && rm -rf ./lab_results/$remotefile/*"
 rm -rf ./lab_results/ovslog/*
-ssh -A -t qyn@10.15.198.160 ssh ubuntu@192.168.100.2 "cd $ovs_path && rm -f ./*.csv"
+ssh ubuntu@10.15.198.148 "cd $ovs_path && rm -f ./*.csv"
 
 echo "del former file successfully"
