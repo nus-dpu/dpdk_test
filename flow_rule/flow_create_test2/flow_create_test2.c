@@ -33,6 +33,8 @@
 #include "packet_make.c"
 #include "para.h"
 
+#define DPDK_22_11 RTE_VERSION_NUM(22, 11, 2);
+
 #define NUM_MBUFS 8191
 #define MBUF_CACHE_SIZE 250
 #define MBUF_SIZE   (10000+sizeof(struct rte_mbuf)+RTE_PKTMBUF_HEADROOM)
@@ -174,7 +176,11 @@ assert_link_status(void)
 	memset(&link, 0, sizeof(link));
 	do {
 		link_get_err = rte_eth_link_get(port_id, &link);
+		#if RTE_VERSION >= DPDK_22_1
+		if (link_get_err == 0 && link.link_status == RTE_ETH_LINK_UP)
+		#else
 		if (link_get_err == 0 && link.link_status == ETH_LINK_UP)
+		#endif
 			break;
 		rte_delay_ms(CHECK_INTERVAL);
 	} while (--rep_cnt);
@@ -182,7 +188,11 @@ assert_link_status(void)
 	if (link_get_err < 0)
 		rte_exit(EXIT_FAILURE, ":: error: link get is failing: %s\n",
 			 rte_strerror(-link_get_err));
+	#if RTE_VERSION >= DPDK_22_1
+	if (link.link_status == RTE_ETH_LINK_DOWN)
+	#else
 	if (link.link_status == ETH_LINK_DOWN)
+	#endif
 		rte_exit(EXIT_FAILURE, ":: error: link is still down\n");
 }
 
@@ -199,6 +209,17 @@ init_port(uint32_t *n_lcores_p)
 
 	/* Ethernet port configured with default settings. 8< */
 	struct rte_eth_conf port_conf = {
+		#if RTE_VERSION >= DPDK_22_1
+		.txmode = {
+			.offloads =
+				RTE_ETH_TX_OFFLOAD_VLAN_INSERT |
+				RTE_ETH_TX_OFFLOAD_IPV4_CKSUM  |
+				RTE_ETH_TX_OFFLOAD_UDP_CKSUM   |
+				RTE_ETH_TX_OFFLOAD_TCP_CKSUM   |
+				RTE_ETH_TX_OFFLOAD_SCTP_CKSUM  |
+				RTE_ETH_TX_OFFLOAD_TCP_TSO,
+		},
+		#else
 		.rxmode = {
 			.split_hdr_size = 0,
 		},
@@ -211,6 +232,8 @@ init_port(uint32_t *n_lcores_p)
 				DEV_TX_OFFLOAD_SCTP_CKSUM  |
 				DEV_TX_OFFLOAD_TCP_TSO,
 		},
+		#endif
+
 	};
 	struct rte_eth_txconf txq_conf;
 	struct rte_eth_rxconf rxq_conf;
