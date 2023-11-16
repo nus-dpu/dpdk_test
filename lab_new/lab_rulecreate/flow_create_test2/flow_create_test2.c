@@ -33,7 +33,7 @@
 #include "packet_make.c"
 #include "para.h"
 
-#define DPDK_22_11 RTE_VERSION_NUM(22, 11, 2);
+#define DPDK_22_11 RTE_VERSION_NUM(22, 11, 2, 0);
 
 #define NUM_MBUFS 8191
 #define MBUF_CACHE_SIZE 250
