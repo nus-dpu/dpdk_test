@@ -45,6 +45,17 @@ then
     src_nic_name="enp177s0f0"
     dst_ip="192.168.200.1"
     dst_mac="b8:ce:f6:a8:82:a6"
+elif [[ $line == "bf3" && $host_name == "node1" ]] 
+then
+    src_nic_name="ens22f0np0"
+    dst_ip="192.168.200.2"
+    dst_mac="08:c0:eb:de:43:8e"
+elif [[ $line == "bf3" && $host_name == "node2" ]] 
+then
+    src_nic_name="ens22np0"
+    dst_ip="192.168.200.1"
+    dst_mac="a0:88:c2:31:fb:6e"
+
 fi
 
 
